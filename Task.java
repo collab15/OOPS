@@ -1,23 +1,19 @@
-import java.util.UUID;
 
 public class Task {
 
-    String id;
-
-    int priority;
-
     String name;
+
     int importance;
     int urgency;
+    int effort;
     int length;
 
-    Task(String name,int importance,int urgency,int length){
-
-        this.id = UUID.randomUUID().toString();
+    Task(String name,int importance,int urgency,int effort, int length){
 
         this.name = name;
         this.importance = importance;
         this.urgency = urgency;
+        this.effort = effort;
         this.length = length;
     }
 

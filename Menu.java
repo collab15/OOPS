@@ -1,22 +1,30 @@
+import java.util.ArrayList;
 import java.util.List;
 
 // Abstract class
 abstract class Menu {
 
-    protected List<Task> menuItems;
-    protected List<String> menuSelections;
-    protected int currentIndex = 1;
+    protected List<Task> menuItems = new ArrayList<>();
+    protected List<String> menuSelections = new ArrayList<>();
+    protected int currentIndex = 0;
 
     abstract void setMenuSelections();
     abstract void handleSelection();
     abstract void select();
 
-    protected void setMenuItems(List<Task> suggestedTasks){
-        this.menuItems = suggestedTasks;
+    protected void setMenuItems(List<Task> tasks){
+        this.menuItems = tasks;
     }
 
     protected void handleSelectionChange(int indexChange){
+        
         this.currentIndex += indexChange;
+
+        if(currentIndex < 0){
+            currentIndex = menuSelections.size() - 1;
+        } else if(currentIndex >= menuSelections.size()){
+            currentIndex = 0;
+        }
 
         for(String MenuSelection : menuSelections){
             // printf with MenuSelections[index] highlighted

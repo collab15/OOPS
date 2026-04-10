@@ -1,14 +1,22 @@
 import java.util.List;
+import java.util.ArrayList;
 
 public class Main {
     public static void main(String[] args) {
 
+        Settings.loadSettings();
         TaskManager.loadTasks();
 
-        List<Task> suggestedTasks[];
-        // run AI engine to get top 3 suggestions
+        AI_Engine ai = new AI_Engine();
+        ai.loadState();
 
-        MainMenu.setMenuItems(suggestedTasks);
+        List<Task> suggestedTasks = new ArrayList<>();
+
+        suggestedTasks = ai.suggestTasks();
+        
+        MainMenu mainMenu = new MainMenu();
+        mainMenu.setMenuItems(suggestedTasks);
+        mainMenu.handleSelection();
 
     }
 }

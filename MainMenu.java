@@ -3,7 +3,13 @@ import java.util.List;
 public class MainMenu extends Menu {
     
     void setMenuSelections(){
-        this.menuSelections = menuSelections;
+        this.menuSelections = List.of(
+            "Start a Task",
+            "Add a Task",
+            "View Pending Tasks",
+            "View Completed Tasks",
+            "Exit"
+        );
     }
 
     void handleSelection(){
@@ -17,7 +23,25 @@ public class MainMenu extends Menu {
 
     void select(){
         switch(currentIndex){
-            // case 1 : call this;
+            case 0 :
+
+                break;
+
+            case 1 :
+
+                break;
+
+            case 2 :
+
+                break;
+
+            case 3 :
+
+                break;
+
+            case 4 :
+
+                break;
         }
     }
 }
