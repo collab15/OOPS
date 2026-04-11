@@ -3,72 +3,44 @@ import java.util.Comparator;
 import java.util.List;
 
 public class HeuristicEngine {
-    
+
     private int numberOfTasksToSuggest;
     private Weights weights;
 
-    HeuristicEngine(int numberOfTasksToSuggest, Weights weights){
+    public HeuristicEngine(int numberOfTasksToSuggest, Weights weights) {
         this.numberOfTasksToSuggest = numberOfTasksToSuggest;
         this.weights = weights;
-
     }
 
-    public List<Task> suggestTasks(){
-
+    public List<Task> suggestTasks() {
         List<Task> pendingTasks = TaskManager.getPendingTasks();
-
         List<PrioritizedTask> priorityList = prioritizeTasks(pendingTasks);
-
-        List<Task> suggestedTasks = chooseHighPriorityTasks (numberOfTasksToSuggest, priorityList);
-
-        return suggestedTasks;
+        return chooseHighPriorityTasks(numberOfTasksToSuggest, priorityList);
     }
 
-    private List<PrioritizedTask> prioritizeTasks(List<Task> pendingTasks){
-
+    private List<PrioritizedTask> prioritizeTasks(List<Task> pendingTasks) {
         List<PrioritizedTask> priorityList = new ArrayList<>();
-
-        for(Task pendingTask : pendingTasks){
-            double priority = calculatePriority(pendingTask);
+        for (Task pendingTask: pendingTasks) {
+            double priority = weights.calculateScore(pendingTask);
             PrioritizedTask prioritizedTask = new PrioritizedTask(priority, pendingTask);
             priorityList.add(prioritizedTask);
         }
-
         return priorityList;
     }
 
-    private List<Task> chooseHighPriorityTasks(int numberOfTasksToSuggest, List<PrioritizedTask> priorityList){
-        
+    private List<Task> chooseHighPriorityTasks(int numberOfTasksToSuggest, List<PrioritizedTask> priorityList) {
         List<Task> highPriorityTasks = new ArrayList<>();
-
         List<PrioritizedTask> tasksSortedByPriority = sortByPriority(priorityList);
-
         int limit = Math.min(numberOfTasksToSuggest, tasksSortedByPriority.size());
-
-        for(int i = 0; i < limit; i++){
-            highPriorityTasks.add(tasksSortedByPriority.get(i).task);
+        for (int i = 0; i < limit; i++) {
+            highPriorityTasks.add(tasksSortedByPriority.get(i).getTask());
         }
-
         return highPriorityTasks;
     }
 
-    private double calculatePriority(Task task){
-
-        double priority = weights.w_importance * task.importance
-                    + weights.w_urgency * task.urgency
-                    + weights.w_effort * task.effort
-                    + weights.w_length * task.length;
-
-        return priority;
-    }
-
-    private List<PrioritizedTask> sortByPriority(List<PrioritizedTask> priorityList){
-        
+    private List<PrioritizedTask> sortByPriority(List<PrioritizedTask> priorityList) {
         List<PrioritizedTask> sortedPriorityList = new ArrayList<>(priorityList);
-
-        sortedPriorityList.sort(Comparator.comparingDouble((PrioritizedTask t) -> t.priority).reversed());
-
+        sortedPriorityList.sort(Comparator.comparingDouble(PrioritizedTask::getPriority).reversed());
         return sortedPriorityList;
     }
-
 }
