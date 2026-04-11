@@ -1,15 +1,27 @@
 public class Settings {
 
     public static class AI_Settings {
-        public static int extentOfBacklogToLearnFrom = 10;
-        public static double learningFactor = 0.3;
+        private static int extentOfBacklogToLearnFrom = 10;
+        private static double learningFactor = 0.3;
+
+        public static int getBacklogSize() {
+            return extentOfBacklogToLearnFrom;
+        }
+
+        public static double getLearningFactor() {
+            return learningFactor;
+        }
     }
 
     public static class UserSettings {
-        public static int numberOfTasksToSuggest = 3;
+        private static int numberOfTasksToSuggest = 3;
+
+        public static int getSuggestionCount() {
+            return numberOfTasksToSuggest;
+        }
     }
 
     public static void loadSettings() {
-        // load settings from memory
+        // load logic
     }
 }
