@@ -1,20 +1,39 @@
 public class Weights {
-    double w_importance;
-    double w_urgency;
-    double w_effort;
-    double w_length;
 
-    Weights(double w_importance, double w_urgency, double w_effort, double w_length){
-        this.w_importance = w_importance;
-        this.w_urgency = w_urgency;
-        this.w_effort = w_effort;
-        this.w_length = w_length;
+    private double importance;
+    private double urgency;
+    private double effort;
+    private double length;
+
+    public Weights(double i, double u, double e, double l) {
+        this.importance = i;
+        this.urgency = u;
+        this.effort = e;
+        this.length = l;
+    }
+    
+    public void applyDelta(Delta delta) {
+        this.importance += delta.getImportance();
+        this.urgency += delta.getUrgency();
+        this.effort += delta.getEffort();
+        this.length += delta.getLength();
     }
 
-    void updateByDelta(Delta delta){
-        this.w_importance += delta.d_importance;
-        this.w_urgency += delta.d_urgency;
-        this.w_effort += delta.d_effort;
-        this.w_length += delta.d_length;
+    public double calculateScore(Task task) {
+        return importance * task.getImportance() + urgency * task.getUrgency() 
+            + effort * task.getEffort() + length * task.getLength();
+    }
+
+    public double getImportance() {
+        return importance; 
+    }
+    public double getUrgency() { 
+        return urgency; 
+    }
+    public double getEffort() { 
+        return effort;
+    }
+    public double getLength() { 
+        return length; 
     }
 }
