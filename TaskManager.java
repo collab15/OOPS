@@ -1,32 +1,19 @@
-// import java.io.FileWriter;
-// import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+public class TaskManager {
 
-public abstract class TaskManager {
+    private List<Task> pendingTasks = new ArrayList<>();
+    private List<Task> completedTasks = new ArrayList<>();
 
-    private static List<Task> pendingTasks = new ArrayList<>();
-    private static List<Task> completedTasks = new ArrayList<>();
-
-
-    public static List<Task> getPendingTasks() {
+    public List<Task> getPendingTasks() {
         return pendingTasks;
     }
 
-    public static List<Task> getCompletedTasks() {
+    public List<Task> getCompletedTasks() {
         return completedTasks;
     }
 
-    public static void loadTasks() {
-        // Load from storage (file/database)
-        // Example:
-        // pendingTasks.add(new Task(...));
-    }
-
-    public static void addTask(Task task) {
+    public void addTask(Task task) {
         pendingTasks.add(task);
-
-        // try {
+                // try {
         //     FileWriter writer = new FileWriter("tasks/pending/" + task.name + ".dat");
 
         //     writer.write(task.name + "\n");
@@ -40,16 +27,16 @@ public abstract class TaskManager {
         // }
     }
 
-    public static void completeTask(Task task) {
+    public void completeTask(Task task) {
         if (pendingTasks.remove(task)) {
             completedTasks.add(task);
         }
     }
-
-    public static void removeTask(Task task) {
-        pendingTasks.remove(task);
+    public static void loadTasks() {
+        // Load from storage (file/database)
+        // Example:
+        // pendingTasks.add(new Task(...));
     }
-
 }
 
 
