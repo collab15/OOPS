@@ -1,8 +1,10 @@
+package project;
+
 public class Settings {
 
     public static class AI_Settings {
-        private static int extentOfBacklogToLearnFrom = 10;
-        private static double learningFactor = 0.3;
+        private static int extentOfBacklogToLearnFrom = 10; // AI will look at last 10 tasks to look at 
+        private static double learningFactor = 0.3; // controls how fast the AI learns
 
         public static int getBacklogSize() {
             return extentOfBacklogToLearnFrom;
@@ -10,6 +12,14 @@ public class Settings {
 
         public static double getLearningFactor() {
             return learningFactor;
+        }
+
+        public static void setBacklogSize(int size) {
+            extentOfBacklogToLearnFrom = size;
+        }
+
+        public static void setLearningFactor(double factor) {
+            learningFactor = factor;
         }
     }
 
@@ -19,9 +29,14 @@ public class Settings {
         public static int getSuggestionCount() {
             return numberOfTasksToSuggest;
         }
+        public static void setSuggestionCount(int count) {
+            numberOfTasksToSuggest = count;
+        }
     }
 
     public static void loadSettings() {
         // load logic
     }
 }
+
+// static inner classes so u dont need to create an object of settings to use it can directly call it 
