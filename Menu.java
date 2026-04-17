@@ -1,12 +1,14 @@
+package project;
+
 import java.util.ArrayList;
 import java.util.List;
 
 // Abstract class
 abstract class Menu {
 
-    protected List<Task> menuItems = new ArrayList<>();
-    protected List<String> menuSelections = new ArrayList<>();
-    protected int currentIndex = 0;
+    protected List<Task> menuItems = new ArrayList<>(); // holds actual objects like task used when displaying data
+    protected List<String> menuSelections = new ArrayList<>(); // used for navigation menu
+    protected int currentIndex = 0; // tracks which option is currently selected
 
     abstract void setMenuSelections();
     abstract void handleSelection();
@@ -26,13 +28,14 @@ abstract class Menu {
             currentIndex = 0;
         }
 
-        for(String MenuSelection : menuSelections){
+        //for(String MenuSelection : menuSelections){
             // printf with MenuSelections[index] highlighted
-        }
+        //}
     }
 
     protected void displayMenuItems(){
         for(Task menuItem : menuItems){
+            System.out.println("- " + menuItem);
             //printf MenuItem.xyz
         }
     }
@@ -42,5 +45,4 @@ abstract class Menu {
             //printf MenuSelection
         }
     }
-
 }
