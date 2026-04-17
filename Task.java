@@ -1,3 +1,5 @@
+package project;
+
 public class Task {
 
     private String name;
@@ -27,16 +29,32 @@ public class Task {
         return effort;
     }
     public int getLength() { 
-        return length; 
+        if(length >= 0) {
+            return length;
+        } else {
+            return 0;
+        }
     }
 
-    public void setLength(int length) { 
-        this.length = length;
+    public void setLength(int length) {
+        if (length >= 0) {
+            this.length = length;
+        }
     }
+// why have u named it reduce length
     public void reduceLength(int timeSpent) {
+        if (timeSpent < 0) return;
         this.length -= timeSpent;
+        if (this.length < 0) {
+            this.length = 0;
+        }
     }
-    public void printDetails(){
-        // printf
+
+    public void printDetails() {
+        System.out.println("Task: " + name);
+        System.out.println("Importance: " + importance);
+        System.out.println("Urgency: " + urgency);
+        System.out.println("Effort: " + effort);
+        System.out.println("Remaining Length: " + length);
     }
 }
