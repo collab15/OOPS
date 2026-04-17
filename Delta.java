@@ -1,9 +1,12 @@
+package project;
+
+// delta represent changes to the weights based on learning from the past task selection
 public class Delta {
 
-    private double d_importance;
-    private double d_urgency;
-    private double d_effort;
-    private double d_length;
+    private final double d_importance;
+    private final double d_urgency;
+    private final double d_effort;
+    private final double d_length;
 
     public Delta(double di, double du, double de, double dl) {
         this.d_importance = di;
@@ -25,3 +28,6 @@ public class Delta {
         return d_length; 
     }
 }
+
+// for example Delta delta = new Delta(1.5, -1, 0.5, 0);
+// this increases importance weight decreases urgency weight slight inc effort leaves length unchanged.
