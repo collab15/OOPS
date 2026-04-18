@@ -1,5 +1,3 @@
-package project;
-
 public class SessionManager implements TimerListener {
 
     private final TaskManager taskManager;
