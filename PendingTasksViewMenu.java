@@ -1,5 +1,3 @@
-package project;
-
 import java.util.List;
 
 public class PendingTasksViewMenu extends Menu {
