@@ -1,5 +1,3 @@
-package project;
-
 public class PomodoroTimer {
 
     private final TimerListener listener;
