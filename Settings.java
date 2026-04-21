@@ -1,5 +1,3 @@
-package project;
-
 public class Settings {
 
     public static class AI_Settings {
