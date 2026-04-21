@@ -1,4 +1,3 @@
-package project;
 
 public class SessionManager implements TimerListener {
 // controls task sessions and interacts with the timer and task manager to update task status based on session outcomes
