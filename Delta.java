@@ -1,3 +1,4 @@
+package project;
 
 // delta represent changes to the weights based on learning from the past task selection
 public class Delta {
