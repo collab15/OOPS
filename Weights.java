@@ -19,11 +19,6 @@ public class Weights {
         this.length += delta.getLength();
     }
 
-    public double calculateScore(Task task) {
-        return importance * task.getImportance() + urgency * task.getUrgency() 
-            + effort * task.getEffort() + length * task.getLength();
-    }
-
     public double getImportance() {
         return importance; 
     }

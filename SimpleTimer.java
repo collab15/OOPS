@@ -30,14 +30,14 @@ public class SimpleTimer {
 
                 if (running && timeRemaining == 0) {
                     running = false;
-                    listener.onTimerComplete(task);
+                    listener.onTimerComplete();
                 }
 
             } catch (InterruptedException e) {
                 // Thread was interrupted → treat as stop
             } finally {
                 if (!running && timeRemaining > 0) {
-                    listener.onTimerInterrupted(task, timeRemaining);
+                    listener.onTimerInterrupted(timeRemaining);
                 }
             }
         } );

@@ -1,96 +1,105 @@
-import org.jline.terminal.Terminal;
-import org.jline.terminal.TerminalBuilder;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 abstract class Menu {
 
-    protected List<Task> menuItems = new ArrayList<>(); // holds actual objects like task used when displaying data
-    protected List<String> menuSelections = new ArrayList<>(); // tracks which option is currently selected
+    protected List<Task> menuItems = new ArrayList<>();
+    protected List<String> menuSelections = new ArrayList<>();
     protected int currentIndex = 0;
 
-    // flag that lets handleSelection signal the display loop to exit
-    protected boolean shouldExit = false;
-    // subclasses will implement this 
-    abstract void setMenuSelections();
-    abstract void handleSelection(int index);
+    protected boolean exitSignal = false;
+
+    abstract Menu handleSelection();
+
+    protected void setMenuSelections(String... options) {
+        for (String option : options) {
+            menuSelections.add(option);
+        }
+    }
 
     protected void setMenuItems(List<Task> tasks) {
         this.menuItems = tasks;
     }
 
-    public void display() {
-        try {
-            Terminal terminal = TerminalBuilder.builder()
-                    .system(true)
-                    .jna(true)
-                    .build(); // this enables us to read arrow keys and other special keys from the terminal
+    public void reset() {
+        currentIndex = 0;
+        exitSignal = false;
+    }
 
-            setMenuSelections(); // loads menu options 
+    public Menu display() {
 
-            // loop checks shouldExit so sub-menus can break back to the caller
-            while (!shouldExit) {
-                render(); // clears screen prints menu highlights selected option
+        render();
 
-                int ch = System.in.read(); // reads raw keyboard input
+        while (!exitSignal) {
 
-                if (ch == 27) {
-                    System.in.read(); // skip '['
-                    int direction = System.in.read();
+            String key = KeyboardListener.listen();
 
-                    if (direction == 'A') {
-                        moveUp();
-                    } else if (direction == 'B') {
-                        moveDown();
-                    }
-                } else if (ch == 10 || ch == 13) { // this happens when the user presses enter 
-                    handleSelection(currentIndex);
+            if ("UP".equals(key)) moveUp();
+            else if ("DOWN".equals(key)) moveDown();
+
+            else if ("BACKSPACE".equals(key)) {
+                if (Navigator.canGoBack()) {
+                    return null;
                 }
             }
 
-        } catch (IOException e) {
-            e.printStackTrace();
+            else if ("ENTER".equals(key)) {
+                return handleSelection();
+            }
+
+            render();
         }
+
+        return null;
     }
 
     private void moveUp() {
-        currentIndex--; // selection moves up index decreases
-        if (currentIndex < 0) {
-            currentIndex = menuSelections.size() - 1;
-        }
+        currentIndex--;
+        if (currentIndex < 0) currentIndex = menuSelections.size() - 1;
     }
 
     private void moveDown() {
         currentIndex++;
-        if (currentIndex >= menuSelections.size()) {
-            currentIndex = 0;
-        }  // if at last reaches at top 
+        if (currentIndex >= menuSelections.size()) currentIndex = 0;
     }
 
-    private void render() {
-        System.out.print("\033[H\033[2J");  // clear screen
-        System.out.flush();
+    protected void render() {
 
-         // this is a common ANSI escape code to clear the terminal screen and move the cursor to the top-left corner,
-        //  it ensures that each time the menu is rendered it starts with a clean slate without any previous output cluttering the display
+        UI.cls();
+
+        System.out.println();
+        UI.printFullWidth("=");
+        UI.printEmpty();
+        UI.printEmpty();
+        UI.printCenter("--- SUGGESTED TASKS ---");
+        UI.printEmpty();
+
+        if (!menuItems.isEmpty()) {
+            for (int i=0; i < menuItems.size() ;i++) {
+                UI.printCenter( (i+1) + ". " + menuItems.get(i).getName());
+            }
+        }else{
+            UI.printCenter("No Tasks Suggested");
+            UI.printEmpty();
+        }
+
+        UI.printEmpty();
+        UI.printEmpty();
+        UI.printFullWidth("-");
+        UI.printEmpty();
 
         // Show menu options
         for (int i = 0; i < menuSelections.size(); i++) {
             if (i == currentIndex) {
-                System.out.println("> " + menuSelections.get(i));
+                UI.printCenter("<[ " + menuSelections.get(i) + " ]>");
+                UI.printEmpty();
             } else {
-                System.out.println("  " + menuSelections.get(i));
+                UI.printCenter(menuSelections.get(i));
+                UI.printEmpty();
             }
         }
-
-        if (!menuItems.isEmpty()) {
-            System.out.println("\n--- Items ---");
-            for (Task item : menuItems) {
-                System.out.println("- " + item);
-            }
-        }
+        
+        UI.printFullWidth("=");
     }
 }
 

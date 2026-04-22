@@ -1,5 +1,6 @@
+import java.io.Serializable;
 
-public class Task {
+public class Task implements Serializable {
 
     private String name;
     private int importance;

@@ -1,20 +1,17 @@
-
 import java.util.List;
 
 public class MainMenu extends Menu {
 
-    // FIX: store the dependencies that Main.java passes in
     private final TaskManager taskManager;
     private final SessionManager sessionManager;
 
-    public MainMenu(TaskManager taskManager, SessionManager sessionManager) {
+    public MainMenu(List<Task> suggestedTasks,TaskManager taskManager, SessionManager sessionManager) {
+
+        this.menuItems = suggestedTasks;
         this.taskManager = taskManager;
         this.sessionManager = sessionManager;
-    }
 
-    @Override
-    void setMenuSelections() {
-        this.menuSelections = List.of(
+        setMenuSelections(
             "Start a Task",
             "Add a Task",
             "View Pending Tasks",
@@ -23,42 +20,29 @@ public class MainMenu extends Menu {
         );
     }
 
-    @Override
-    void handleSelection(int index) {
-        switch (index) {
+    Menu handleSelection() {
+
+        switch (currentIndex) {
 
             case 0:
-                // pass sessionManager so the menu can start sessions
-                System.out.println("Starting a task...");
-                break;
-
+                return this;
             case 1:
-                System.out.println("Adding a task...");
-                break;
+                KeyboardListener.pause();
+                ActionHandler.addTask();
+                KeyboardListener.resume(); 
+                return this;
 
             case 2:
-                // pass taskManager — PendingTasksViewMenu needs it
-                new PendingTasksViewMenu(taskManager).display();
-                break;
+                return new PendingTasksViewMenu(taskManager);
 
             case 3:
-                // pass taskManager — CompletedTasksViewMenu needs it
-                new CompletedTasksViewMenu(taskManager).display();
-                break;
+                return new CompletedTasksViewMenu(taskManager);
 
             case 4:
-                System.out.println("Exiting...");
                 System.exit(0);
-                break;
+                return null;
         }
+
+        return null;
     }
 }
-
-
-// Menu.display() handles input arrow keys calls handleSelection renders UI  so displayMenuItems displayMenuSelections removed 
-//Main.java
-/*MainMenu.display()
-User presses ↑ ↓
-Menu updates currentIndex
-User presses ENTER
-handleSelection(index) is called */

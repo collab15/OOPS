@@ -29,14 +29,14 @@ public class PomodoroTimer {
 
                 if (running && timeRemaining == 0) {
                     running = false;
-                    listener.onTimerComplete(task);
+                    listener.onTimerComplete();
                 }
 
             } catch (InterruptedException e) {
 
             } finally {
                 if (!running && timeRemaining > 0) {
-                    listener.onTimerInterrupted(task, timeRemaining);
+                    listener.onTimerInterrupted(timeRemaining);
                 }
             }
         });

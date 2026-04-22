@@ -13,7 +13,7 @@ public class SessionManager implements TimerListener {
     }
 
     public Task getCurrentTask() {
-        return currentTask;
+        return this.currentTask;
     }
 
     public boolean isSessionActive() {
@@ -39,22 +39,22 @@ public class SessionManager implements TimerListener {
     }
 
     @Override // when timer finishes marks task complete resets session
-    public void onTimerComplete(Task task) {
-        if (task == null) return;
+    public void onTimerComplete() {
+        if (currentTask == null) return;
         sessionActive = false;
-        System.out.println("Task completed: " + task.getName());
+        System.out.println("Task completed: " + currentTask.getName());
 
         // call on the stored instance, not the class statically
-        taskManager.completeTask(task);
+        taskManager.completeTask(currentTask);
         currentTask = null;
     }
 
     @Override
-    public void onTimerInterrupted(Task task, int timeRemaining) {
-        if (task == null) return;// nullpointerexception without this 
+    public void onTimerInterrupted(int timeRemaining) {
+        if (currentTask == null) return;// nullpointerexception without this 
         sessionActive = false;
-        System.out.println("Task interrupted: " + task.getName());
-        task.reduceLength(timeRemaining);
+        System.out.println("Task interrupted: " + currentTask.getName());
+        currentTask.reduceLength(timeRemaining);
         currentTask = null;
     }
 }

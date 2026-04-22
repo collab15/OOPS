@@ -32,6 +32,21 @@ public class Settings {
         }
     }
 
+    public static class AppSettings{
+        private static int displayWidth = 115;
+        
+        private static String localStorageDirectory = "local/";
+
+        public static int getDisplayWidth() {
+            return displayWidth;
+        }
+
+        public static String getLocalStorageDirectory() {
+            return localStorageDirectory;
+        }
+
+    }
+
     public static void loadSettings() {
         // load logic
     }
