@@ -41,7 +41,7 @@ public class Task implements Serializable {
             this.length = length;
         }
     }
-// why have u named it reduce length
+
     public void reduceLength(int timeSpent) {
         if (timeSpent < 0) return;
         this.length -= timeSpent;

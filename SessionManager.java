@@ -1,32 +1,43 @@
-
+// Controls task sessions. Starts, pauses, resumes, and stops the timer,
+// and updates task status based on what the timer reports back via TimerListener.
+//
+// The timer is not hardcoded — it is passed in at startSession() time so the
+// user can choose between Pomodoro (25 min) or a custom duration each session.
 public class SessionManager implements TimerListener {
-// controls task sessions and interacts with the timer and task manager to update task status based on session outcomes
 
     private Task currentTask;
-    private PomodoroTimer timer;
+    private Timer timer;                  // set when session starts, not at construction
     private boolean sessionActive = false;
     private final TaskManager taskManager;
 
     public SessionManager(TaskManager taskManager) {
         this.taskManager = taskManager;
-        this.timer = new PomodoroTimer(this);
     }
 
-    public Task getCurrentTask() {
-        return this.currentTask;
-    }
+    public Task getCurrentTask()  { return currentTask; }
+    public boolean isSessionActive() { return sessionActive; }
+    public boolean isSessionPaused() { return timer != null && timer.isPaused(); }
+    public int getTimeRemaining()    { return timer != null ? timer.getTimeRemaining() : 0; }
 
-    public boolean isSessionActive() {
-        return sessionActive;
-    }
-// sets current task starts timer marks session as activeo do nothing if task null 
-    public void startSession(Task task) {
-        if (task == null || sessionActive) return;
+    // Starts a session with the given task and a caller-chosen timer.
+    // Caller creates the timer (PomodoroTimer or SimpleTimer) and passes it in.
+    public void startSession(Task task, Timer chosenTimer) {
+        if (task == null || chosenTimer == null || sessionActive) return;
 
-        System.out.println("Started task: " + task.getName());
-        this.currentTask = task;
-        this.sessionActive = true;
+        this.timer    = chosenTimer;
+        currentTask   = task;
+        sessionActive = true;
         timer.start(task);
+    }
+
+    public void pauseSession() {
+        if (!sessionActive) return;
+        timer.pause();
+    }
+
+    public void resumeSession() {
+        if (!sessionActive) return;
+        timer.resume();
     }
 
     public void stopSession() {
@@ -38,22 +49,18 @@ public class SessionManager implements TimerListener {
         }
     }
 
-    @Override // when timer finishes marks task complete resets session
+    @Override
     public void onTimerComplete() {
         if (currentTask == null) return;
         sessionActive = false;
-        System.out.println("Task completed: " + currentTask.getName());
-
-        // call on the stored instance, not the class statically
         taskManager.completeTask(currentTask);
         currentTask = null;
     }
 
     @Override
     public void onTimerInterrupted(int timeRemaining) {
-        if (currentTask == null) return;// nullpointerexception without this 
+        if (currentTask == null) return;
         sessionActive = false;
-        System.out.println("Task interrupted: " + currentTask.getName());
         currentTask.reduceLength(timeRemaining);
         currentTask = null;
     }

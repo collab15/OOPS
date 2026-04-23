@@ -1,64 +1,11 @@
+// A 25-minute timer — a named specialization of SimpleTimer.
+// Exists so that SessionManager and any other caller can express intent
+// clearly: new PomodoroTimer(this) vs new SimpleTimer(this, someNumber).
+public class PomodoroTimer extends SimpleTimer {
 
-public class PomodoroTimer {
-
-    private final TimerListener listener;
-    private final int workDuration = 25 * 60;
-
-    private volatile boolean running = false;
-    private volatile int timeRemaining;
-
-    private Thread timerThread;
+    private static final int POMODORO_DURATION = 25 * 60; // 25 minutes in seconds
 
     public PomodoroTimer(TimerListener listener) {
-        this.listener = listener;
-    }
-
-    public void start(Task task) {
-
-        if (running) return;
-
-        running = true;
-        timeRemaining = workDuration;
-
-        timerThread = new Thread(() -> {
-            try {
-                while (timeRemaining > 0 && running) {
-                    Thread.sleep(1000);
-                    timeRemaining--;
-                }
-
-                if (running && timeRemaining == 0) {
-                    running = false;
-                    listener.onTimerComplete();
-                }
-
-            } catch (InterruptedException e) {
-
-            } finally {
-                if (!running && timeRemaining > 0) {
-                    listener.onTimerInterrupted(timeRemaining);
-                }
-            }
-        });
-        timerThread.start();
-    }
-
-    public void stop(Task task) {
-
-        if (!running) return;
-
-        running = false;
-
-        if (timerThread != null) { // or else nullpointerexception 
-            timerThread.interrupt();
-        }
-    }
-
-    public int getTimeRemaining() {
-        return timeRemaining;
-    }
-
-    public boolean isRunning() {
-        return running;
+        super(listener, POMODORO_DURATION);
     }
 }
