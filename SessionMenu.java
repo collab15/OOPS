@@ -10,7 +10,7 @@ import java.util.Scanner;
 // countdown is visible without needing a keypress.
 public class SessionMenu extends Menu {
 
-    private enum Mode { SELECTING, CHOOSING_TIMER, ACTIVE }
+    private enum Mode { SELECTING, CHOOSING_TIMER, ACTIVE, COMPLETED}
 
     private final SessionManager sessionManager;
     private List<Task> tasks;
@@ -39,31 +39,24 @@ public class SessionMenu extends Menu {
             while (refreshing) {
                 try {
                     Thread.sleep(1000);
-
                     if (refreshing && mode == Mode.ACTIVE) {
                         render();
 
                         // Timer finished naturally — session ended on its own
+                        // onTimerComplete() already ran in SessionManager,
+                        // so we just exit active mode and go back to selecting
                         if (!sessionManager.isSessionActive()) {
-
-                            // FIX: show completion screen properly
-                            mode = null; // temporary safe state
-                            render();
-
-                            try { Thread.sleep(1200); } catch (Exception ignored) {}
-
                             refreshing = false;
+                            mode = Mode.SELECTING;
                             enterSelectingMode();
                             render();
                         }
                     }
-
                 } catch (InterruptedException e) {
                     // stopped intentionally by stopRefreshThread()
                 }
             }
         }, "screen-refresh-thread");
-
         refreshThread.setDaemon(true);
         refreshThread.start();
     }
@@ -190,6 +183,12 @@ public class SessionMenu extends Menu {
         }
 
         else if (mode == Mode.CHOOSING_TIMER) {
+
+            UI.printCenter("Pomodoro  :  25 minutes, classic focus session");
+            UI.printEmpty();
+            UI.printCenter("Custom    :  you enter the duration in minutes");
+        }
+        else if (mode == Mode.COMPLETED) {
 
             UI.printCenter("Pomodoro  :  25 minutes, classic focus session");
             UI.printEmpty();
@@ -332,9 +331,30 @@ public class SessionMenu extends Menu {
 
         int minutes = 0;
 
-        while (true) {
+        String status="Status Couldn't be determined";
 
+        while (true) {
+            
             UI.cls();
+
+            if ("ONLINE".equals(Status.get())){
+                status = Status.get() + " " ;
+            }else{
+                status= Status.get() + " - Restart to sync";
+            }
+            System.out.println();
+            UI.printFullWidth("*");
+            UI.printCenter("████████   █████    █████   ██   ██    ██   ██");
+            UI.printCenter("   ██     ██   ██   ██      ██  ██      ██ ██ ");
+            UI.printCenter("   ██     ███████   █████   █████        ███   ");
+            UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
+            UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
+            UI.printFullWidth("-");
+            UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
+            UI.printFullWidth("=");
+            UI.printEmpty();
+            UI.printCenter("--- " + getItemsHeader() + " ---");
+            UI.printEmpty();
             UI.printCenter("Enter duration (1 - 120 minutes)");
             UI.inputCenter("Minutes: ");
 
