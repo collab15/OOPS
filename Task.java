@@ -2,6 +2,7 @@ import java.io.Serializable;
 
 public class Task implements Serializable {
 
+    private String id;
     private String name;
     private int importance;
     private int urgency;
@@ -16,6 +17,9 @@ public class Task implements Serializable {
         this.length = length;
     }
 
+    public String getID(){
+        return id;
+    }
     public String getName() {
         return name;
     }
@@ -36,6 +40,9 @@ public class Task implements Serializable {
         }
     }
 
+    public void setID(String id){
+        this.id = id;
+    }
     public void setLength(int length) {
         if (length >= 0) {
             this.length = length;
@@ -57,4 +64,18 @@ public class Task implements Serializable {
         System.out.println("Effort: " + effort);
         System.out.println("Remaining Length: " + length);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Task)) return false;
+        Task task = (Task) o;
+        return id.equals(task.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return id.hashCode();
+    }
+
 }

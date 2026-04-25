@@ -1,12 +1,11 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class TaskManager {
 
     // Instance fields — NOT static.
-    // Static lists meant all TaskManager instances 
-    // shared the same list, which caused unpredictable behaviour.
     private List<Task> pendingTasks   = new ArrayList<>();
     private List<Task> completedTasks = new ArrayList<>();
 
@@ -15,139 +14,169 @@ public class TaskManager {
     }
 
     public List<Task> getCompletedTasks() {
-        return new ArrayList<>(completedTasks); // returns the copy only 
+        return new ArrayList<>(completedTasks);
     }
 
+    // =========================
+    // ADD TASK
+    // =========================
     public void addTask(Task task) {
 
         if (task == null) return;
 
+        String id = UUID.randomUUID().toString();
+        task.setID(id);
+
         pendingTasks.add(task);
 
-        String baseDir = Settings.AppSettings.getLocalStorageDirectory(); // gets the base folder which is local
-        String dirPath = baseDir + File.separator + "pendingTasks";
+        saveTask(task, "pendingTasks");
 
-        File directory = new File(dirPath);
-        if (!directory.exists()) {
-            directory.mkdirs(); // creates the folder  
-        }
-
-        File file = new File(directory, Utils.sanitizeFileName(task.getName()) + ".tsk"); // converts the task name into a safe filename
-// automatically closes the filestreams when done even if an error occurs 
-        try (FileOutputStream fos = new FileOutputStream(file);
-             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
-            // ObjectOutputStream converts a java object into bytes that can be written to a file -> serialisation
-//oos.writeObject(task) — writes the entire Task object to the file.
-            oos.writeObject(task);
-
-        } catch (IOException e) {
-            System.out.println("Failed to save task: " + e.getMessage());
-        }
+        PartitionManager.sync(this);
     }
 
-    public void removeTask(Task task) { // removes from in memory lists then delete file from disk 
+    // =========================
+    // REMOVE TASK
+    // =========================
+    public void removeTask(Task task) {
 
         if (task == null) return;
-
-        String baseDir = Settings.AppSettings.getLocalStorageDirectory();
-        String fileName = Utils.sanitizeFileName(task.getName()) + ".tsk";
-
-        File pendingFile   = new File(baseDir + File.separator + "pendingTasks",   fileName);
-        File completedFile = new File(baseDir + File.separator + "completedTasks", fileName);
 
         pendingTasks.remove(task);
         completedTasks.remove(task);
 
-        if (pendingFile.exists()) { // checking b4 deleting to avoid errors
-            if (!pendingFile.delete()) {
-                System.out.println("Failed to delete pending task file");
-            }
-        }
+        deleteTaskFile(task);
 
-        if (completedFile.exists()) {
-            if (!completedFile.delete()) {
-                System.out.println("Failed to delete completed task file");
-            }
-        }
+        PartitionManager.sync(this);
     }
 
-    public void completeTask(Task task) {  // moves the file from local pending tasks to local completing tasks than deleting and rewriting just moves existing file 
+    // =========================
+    // COMPLETE TASK
+    // =========================
+    public void completeTask(Task task) {
 
         if (task == null) return;
 
         if (pendingTasks.remove(task)) {
+
             completedTasks.add(task);
 
-            String baseDir = Settings.AppSettings.getLocalStorageDirectory();
+            moveFile(task);
 
-            File oldFile = new File(
-                    baseDir + File.separator + "pendingTasks",
-                    Utils.sanitizeFileName(task.getName()) + ".tsk"
-            );
-
-            File newDir = new File(baseDir + File.separator + "completedTasks");
-            if (!newDir.exists()) newDir.mkdirs();
-
-            File newFile = new File(
-                    newDir,
-                    Utils.sanitizeFileName(task.getName()) + ".tsk"
-            );
-
-            oldFile.renameTo(newFile);
+            PartitionManager.sync(this);
         }
     }
 
-    public void clearCompletedTasks() { 
+    // =========================
+    // CLEAR COMPLETED
+    // =========================
+    public void clearCompletedTasks() {
+
+        completedTasks.clear();
 
         String baseDir = Settings.AppSettings.getLocalStorageDirectory();
         File completedDir = new File(baseDir + File.separator + "completedTasks");
 
-        completedTasks.clear(); // wipes the in memory list 
+        if (completedDir.exists()) {
 
-        if (completedDir.exists() && completedDir.isDirectory()) {
-         // filters files gets files whose nmes end w .tsk to avoid accidently deleting unrelated files 
             File[] files = completedDir.listFiles((dir, name) -> name.endsWith(".tsk"));
 
             if (files != null) {
                 for (File file : files) {
-                    if (!file.delete()) {
-                        System.out.println("Failed to delete: " + file.getName());
-                    }
+                    file.delete();
                 }
             }
         }
+
+        PartitionManager.sync(this);
     }
 
-    public void loadTasks() { // called once in startup in main clears both lists first then loads from both folders 
+    // =========================
+    // LOAD TASKS
+    // =========================
+    public void loadTasks() {
 
         String baseDir = Settings.AppSettings.getLocalStorageDirectory();
 
         pendingTasks.clear();
         completedTasks.clear();
 
-        loadTasksFromFolder(baseDir + File.separator + "pendingTasks",   pendingTasks);
-        loadTasksFromFolder(baseDir + File.separator + "completedTasks", completedTasks);
+        loadFromFolder(baseDir + File.separator + "pendingTasks", pendingTasks);
+        loadFromFolder(baseDir + File.separator + "completedTasks", completedTasks);
     }
 
-    private void loadTasksFromFolder(String path, List<Task> list) {
+    // =========================
+    // FILE SAVE
+    // =========================
+    private void saveTask(Task task, String folder) {
+
+        String baseDir = Settings.AppSettings.getLocalStorageDirectory();
+        String path = baseDir + File.separator + folder;
 
         File directory = new File(path);
-        if (!directory.exists() || !directory.isDirectory()) return;
+        if (!directory.exists()) directory.mkdirs();
+
+        File file = new File(directory, task.getID() + ".tsk");
+
+        try (FileOutputStream fos = new FileOutputStream(file);
+             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+
+            oos.writeObject(task);
+
+        } catch (IOException ignored) {}
+    }
+
+    // =========================
+    // FILE DELETE
+    // =========================
+    private void deleteTaskFile(Task task) {
+
+        String baseDir = Settings.AppSettings.getLocalStorageDirectory();
+
+        File pending   = new File(baseDir + "/pendingTasks", task.getID() + ".tsk");
+        File completed = new File(baseDir + "/completedTasks", task.getID() + ".tsk");
+
+        if (pending.exists()) pending.delete();
+        if (completed.exists()) completed.delete();
+    }
+
+    // =========================
+    // MOVE FILE
+    // =========================
+    private void moveFile(Task task) {
+
+        String baseDir = Settings.AppSettings.getLocalStorageDirectory();
+
+        File oldFile = new File(baseDir + "/pendingTasks", task.getID() + ".tsk");
+
+        File newDir = new File(baseDir + "/completedTasks");
+        if (!newDir.exists()) newDir.mkdirs();
+
+        File newFile = new File(newDir, task.getID() + ".tsk");
+
+        oldFile.renameTo(newFile);
+    }
+
+    // =========================
+    // LOAD FROM FILE
+    // =========================
+    private void loadFromFolder(String path, List<Task> list) {
+
+        File directory = new File(path);
+        if (!directory.exists()) return;
 
         File[] files = directory.listFiles((dir, name) -> name.endsWith(".tsk"));
+
         if (files == null) return;
 
         for (File file : files) {
-            try (FileInputStream fis  = new FileInputStream(file);
+
+            try (FileInputStream fis = new FileInputStream(file);
                  ObjectInputStream ois = new ObjectInputStream(fis)) {
-// ObjectInputStream reads bytes from a file converts them back to java object - deserialisation
-                Task task = (Task) ois.readObject(); // reads object and casts it to task cast is needed bec readObject() returns a generic Object type
+
+                Task task = (Task) ois.readObject();
                 list.add(task);
 
-            } catch (IOException | ClassNotFoundException e) {
-                System.out.println("Failed loading: " + file.getName());
-            }
+            } catch (Exception ignored) {}
         }
     }
 }
-

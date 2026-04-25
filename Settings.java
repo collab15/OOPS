@@ -22,7 +22,7 @@ public class Settings {
     }
 
     public static class UserSettings {
-        private static int numberOfTasksToSuggest = 3;
+        private static int numberOfTasksToSuggest = 5;
 
         public static int getSuggestionCount() {
             return numberOfTasksToSuggest;

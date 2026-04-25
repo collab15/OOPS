@@ -39,24 +39,31 @@ public class SessionMenu extends Menu {
             while (refreshing) {
                 try {
                     Thread.sleep(1000);
+
                     if (refreshing && mode == Mode.ACTIVE) {
                         render();
 
                         // Timer finished naturally — session ended on its own
-                        // onTimerComplete() already ran in SessionManager,
-                        // so we just exit active mode and go back to selecting
                         if (!sessionManager.isSessionActive()) {
+
+                            // FIX: show completion screen properly
+                            mode = null; // temporary safe state
+                            render();
+
+                            try { Thread.sleep(1200); } catch (Exception ignored) {}
+
                             refreshing = false;
-                            mode = Mode.SELECTING;
                             enterSelectingMode();
                             render();
                         }
                     }
+
                 } catch (InterruptedException e) {
                     // stopped intentionally by stopRefreshThread()
                 }
             }
         }, "screen-refresh-thread");
+
         refreshThread.setDaemon(true);
         refreshThread.start();
     }
@@ -105,14 +112,13 @@ public class SessionMenu extends Menu {
         currentIndex = 0;
         menuSelections.clear();
         setMenuSelections("Pause", "Stop Session");
-        startRefreshThread(); // start ticking the screen every second
+        startRefreshThread();
     }
 
     private void enterPausedMode() {
         currentIndex = 0;
         menuSelections.clear();
         setMenuSelections("Resume", "Stop Session");
-        // don't stop refresh thread — we still want screen updates while paused
     }
 
     // ---- Header ----
@@ -125,7 +131,7 @@ public class SessionMenu extends Menu {
             case ACTIVE:         return sessionManager.isSessionPaused()
                                         ? "SESSION PAUSED"
                                         : "SESSION IN PROGRESS";
-            default:             return "";
+            default:             return "SESSION COMPLETED";
         }
     }
 
@@ -134,8 +140,25 @@ public class SessionMenu extends Menu {
     @Override
     protected void render() {
 
+        String status="Status Couldn't be determined";
+
         UI.cls();
+
+        if ("ONLINE".equals(Status.get())){
+            status = Status.get() + " " ;
+        }else{
+            status= Status.get() + " - Restart to sync";
+        }
+
         System.out.println();
+        UI.printFullWidth("*");
+        UI.printCenter("████████   █████    █████   ██   ██    ██   ██");
+        UI.printCenter("   ██     ██   ██   ██      ██  ██      ██ ██ ");
+        UI.printCenter("   ██     ███████   █████   █████        ███   ");
+        UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
+        UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
+        UI.printFullWidth("-");
+        UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
         UI.printFullWidth("=");
         UI.printEmpty();
         UI.printCenter("--- " + getItemsHeader() + " ---");
@@ -147,22 +170,26 @@ public class SessionMenu extends Menu {
             if (current != null) {
                 UI.printCenter("TASK : " + current.getName());
             }
+
             UI.printEmpty();
             UI.printCenter(formatTime(sessionManager.getTimeRemaining()));
             UI.printEmpty();
+
             if (sessionManager.isSessionPaused()) {
                 UI.printCenter("[ PAUSED ]");
             }
+        }
 
-        } else if (mode == Mode.SELECTING) {
+        else if (mode == Mode.SELECTING) {
 
             if (tasks.isEmpty()) {
                 UI.printCenter("No tasks available.");
             } else {
                 UI.printCenter("UP / DOWN to scroll   ENTER to select   BACKSPACE to go back");
             }
+        }
 
-        } else if (mode == Mode.CHOOSING_TIMER) {
+        else if (mode == Mode.CHOOSING_TIMER) {
 
             UI.printCenter("Pomodoro  :  25 minutes, classic focus session");
             UI.printEmpty();
@@ -171,7 +198,6 @@ public class SessionMenu extends Menu {
 
         UI.printEmpty();
         UI.printFullWidth("-");
-        UI.printEmpty();
 
         for (int i = 0; i < menuSelections.size(); i++) {
             if (i == currentIndex) {
@@ -230,10 +256,23 @@ public class SessionMenu extends Menu {
 
         // ---- SELECTING ----
         if (mode == Mode.SELECTING) {
+
             if (tasks.isEmpty()) return null;
-            if (currentIndex < tasks.size()) {
-                enterChoosingTimerMode(tasks.get(currentIndex));
-            }
+
+            List<Task> suggestions = AIEngine.suggestTasks();
+
+            Task selected = tasks.get(currentIndex);
+            selectedTask = selected;
+
+            Task topSuggested = suggestions.isEmpty() ? selected : suggestions.get(0);
+
+            // FIX 1: DO NOT call learn() manually anymore
+            // FIX 2: keep async to avoid UI freeze
+            new Thread(() -> {
+                AIEngine.observeTaskSelection(selected, topSuggested);
+            }).start();
+
+            enterChoosingTimerMode(selected);
             return this;
         }
 
@@ -242,12 +281,12 @@ public class SessionMenu extends Menu {
 
             switch (currentIndex) {
 
-                case 0: // Pomodoro
+                case 0:
                     sessionManager.startSession(selectedTask, new PomodoroTimer(sessionManager));
                     enterActiveMode();
                     return this;
 
-                case 1: // Custom duration
+                case 1:
                     int minutes = askForDuration();
                     if (minutes > 0) {
                         sessionManager.startSession(
@@ -258,33 +297,28 @@ public class SessionMenu extends Menu {
                     }
                     return this;
 
-                case 2: // Back
+                case 2:
                     enterSelectingMode();
-                    return this;
-
-                default:
                     return this;
             }
         }
 
-        // ---- ACTIVE ----
         String selected = menuSelections.get(currentIndex);
 
         if ("Pause".equals(selected)) {
             sessionManager.pauseSession();
             enterPausedMode();
-            return this;
         }
+
         if ("Resume".equals(selected)) {
             sessionManager.resumeSession();
             enterActiveMode();
-            return this;
         }
+
         if ("Stop Session".equals(selected)) {
             stopRefreshThread();
             sessionManager.stopSession();
             enterSelectingMode();
-            return this;
         }
 
         return this;
@@ -301,17 +335,7 @@ public class SessionMenu extends Menu {
         while (true) {
 
             UI.cls();
-            System.out.println();
-            UI.printFullWidth("=");
-            UI.printEmpty();
-            UI.printCenter("--- CUSTOM DURATION ---");
-            UI.printEmpty();
-            UI.printCenter("TASK : " + selectedTask.getName());
-            UI.printEmpty();
-            UI.printFullWidth("-");
-            UI.printEmpty();
-            UI.printCenter("Enter duration in minutes (1 - 120):");
-            UI.printEmpty();
+            UI.printCenter("Enter duration (1 - 120 minutes)");
             UI.inputCenter("Minutes: ");
 
             String input = scanner.nextLine().trim();
@@ -319,11 +343,8 @@ public class SessionMenu extends Menu {
             try {
                 minutes = Integer.parseInt(input);
                 if (minutes >= 1 && minutes <= 120) break;
-                UI.printCenter("ERROR: Enter a number between 1 and 120");
-                sleep();
-            } catch (NumberFormatException e) {
-                UI.printCenter("ERROR: Invalid number");
-                sleep();
+            } catch (Exception e) {
+                UI.printCenter("Invalid input");
             }
         }
 
@@ -334,12 +355,8 @@ public class SessionMenu extends Menu {
     // ---- Utilities ----
 
     private String formatTime(int totalSeconds) {
-        int minutes = totalSeconds / 60;
-        int seconds = totalSeconds % 60;
-        return String.format("%02d : %02d", minutes, seconds);
-    }
-
-    private void sleep() {
-        try { Thread.sleep(1200); } catch (InterruptedException ignored) {}
+        return String.format("%02d : %02d",
+                totalSeconds / 60,
+                totalSeconds % 60);
     }
 }

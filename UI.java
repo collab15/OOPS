@@ -30,6 +30,46 @@ public class UI {
         System.out.println(line);
     }
 
+    public static void printLeft(String text) {
+
+        int space = Math.max(0, INNER_WIDTH - text.length())-1;
+
+        String line =
+                " | " +
+                text +
+                " ".repeat(space) +
+                "|";
+
+        System.out.println(line);
+    }
+
+    public static void printRight(String text) {
+
+        int space = Math.max(0, INNER_WIDTH - text.length());
+
+        String line =
+                " |" +
+                " ".repeat(space) +
+                text +
+                "|";
+
+        System.out.println(line);
+    }
+
+    public static void printAtMargins(String left, String right) {
+
+        int space = Math.max(0, INNER_WIDTH - left.length() - right.length())-1;
+
+        String line =
+                " | " +
+                left +
+                " ".repeat(space) +
+                right +
+                "|";
+
+        System.out.println(line);
+    }
+
     public static void inputCenter(String text) {
 
         int space = Math.max(0, INNER_WIDTH - text.length());
@@ -60,6 +100,6 @@ public class UI {
     }
 
     public static void printFullWidth(String text){
-        System.out.println(" " + text.repeat(WIDTH));
+        System.out.println(" +" + text.repeat(WIDTH-2) + "+");
     }
 }

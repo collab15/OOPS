@@ -1,51 +1,52 @@
+import java.io.*;
 import java.util.List;
 
 // AIEngine is the main branch it suggests tasks using heuristic engine and learns from the task selection history using learning engine
 // AIEngine is a composition of HeuristicEngine LearningEngine and Weights
 public class AIEngine {
 
-    private int numberOfTasksToSuggest;
-    private Weights weights;
+    private static int numberOfTasksToSuggest;
+    private static Weights weights;
 
-    private final LearningEngine learningEngine;
-    private final HeuristicEngine heuristicEngine;
-    private final TaskSelectionHistory taskSelectionHistory;
+    private static LearningEngine learningEngine;
+    private static HeuristicEngine heuristicEngine;
+    private static TaskSelectionHistory taskSelectionHistory;
 
-    private TaskManager taskManager;
+    private static TaskManager taskManager;
 
-    private double learningFactor;
-    private int extentOfBacklogToLearnFrom;
+    private static double learningFactor;
+    private static int extentOfBacklogToLearnFrom;
 
-    public AIEngine(TaskManager taskManager) {
+    public static void init(TaskManager tm) {
 
-        this.taskManager = taskManager;
+        loadState();// AI internal state (AUTO initialized)
+
+        taskManager = tm;
 
         // how many tasks to suggest is determined by user settings
-        this.numberOfTasksToSuggest = Settings.UserSettings.getSuggestionCount();
+        numberOfTasksToSuggest = Settings.UserSettings.getSuggestionCount();
 
         // learning factor and backlog size are determined by AI settings
-        this.learningFactor = Settings.AI_Settings.getLearningFactor();
-        this.extentOfBacklogToLearnFrom = Settings.AI_Settings.getBacklogSize();
+        learningFactor = Settings.AI_Settings.getLearningFactor();
+        extentOfBacklogToLearnFrom = Settings.AI_Settings.getBacklogSize();
 
-        // AI internal state (AUTO initialized)
-        this.weights = new Weights(0.4,0.5,-0.2,-0.1);
-        this.taskSelectionHistory = new TaskSelectionHistory();
+        taskSelectionHistory = new TaskSelectionHistory();
 
         // responsible for learning from past task selection history
-        this.learningEngine = new LearningEngine(
+        learningEngine = new LearningEngine(
                 learningFactor,
                 extentOfBacklogToLearnFrom,
                 taskSelectionHistory
         );
 
         // responsible for suggesting tasks based on current weights and pending tasks
-        this.heuristicEngine = new HeuristicEngine(
+        heuristicEngine = new HeuristicEngine(
                 numberOfTasksToSuggest,
                 weights
         );
     }
 
-    public List<Task> suggestTasks() {
+    public static List<Task> suggestTasks() {
 
         // using the internal taskManager instance
         List<Task> pendingTasks = taskManager.getPendingTasks();
@@ -54,28 +55,84 @@ public class AIEngine {
     }
 
     // user feedback entry point (stores learning signal internally)
-    public void observeTaskSelection(Task task) {
+    public static void observeTaskSelection(Task task, Task suggested) {
 
-        //Delta delta = DeltaGenerator.fromTask(task);
-        //taskSelectionHistory.addDelta(delta);
+        Delta delta = Delta.fromTaskComparison(task, suggested);
+
+        taskSelectionHistory.addDelta(delta);
     }
 
     // calls LearningEngine to analyse past data and produce a delta the change in weight
     // apply those changes to weights
-    public void learn() {
+    public static void learn() {
 
         Delta cumulativeDelta = learningEngine.calculateCumulativeDelta();
         weights.applyDelta(cumulativeDelta);
+
+        saveState();
     }
 
-    public void loadState() {
-        // load weights from storage
+    public static void loadState() {
+
+        String baseDir = Settings.AppSettings.getLocalStorageDirectory();
+        File file = new File(baseDir, "weights.sys");
+
+        // default fallback values
+        double d1 = 0.4, d2 = 0.5, d3 = -0.2, d4 = -0.1;
+
+        try {
+
+            if (!file.exists()) {
+                weights = new Weights(d1, d2, d3, d4);
+                return;
+            }
+
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+
+                String line = reader.readLine();
+
+                if (line == null || line.isEmpty()) {
+                    weights = new Weights(d1, d2, d3, d4);
+                    return;
+                }
+
+                String[] parts = line.trim().split("\\s+");
+
+                if (parts.length < 4) {
+                    weights = new Weights(d1, d2, d3, d4);
+                    return;
+                }
+
+                double w1 = Double.parseDouble(parts[0]);
+                double w2 = Double.parseDouble(parts[1]);
+                double w3 = Double.parseDouble(parts[2]);
+                double w4 = Double.parseDouble(parts[3]);
+
+                weights = new Weights(w1, w2, w3, w4);
+            }
+
+        } catch (Exception e) {
+            //fallback
+            weights = new Weights(d1, d2, d3, d4);
+        }
+    }
+
+    public static void saveState() {
+
+        String baseDir = Settings.AppSettings.getLocalStorageDirectory();
+        File file = new File(baseDir, "weights.sys");
+
+        try (PrintWriter writer = new PrintWriter(file)) {
+
+            writer.println(
+                    weights.getImportance() + " " +
+                    weights.getUrgency() + " " +
+                    weights.getEffort() + " " +
+                    weights.getLength()
+            );
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
-
-// when suggesting tasks : AIEngine → HeuristicEngine → uses Weights → returns tasks
-// when learning : AIEngine → LearningEngine → uses TaskSelectionHistory → returns Delta → AIEngine applies Delta to Weights
-// dependency means one element relies on another to function, for example HeuristicEngine
-// relies on Weights to calculate task priorities, and LearningEngine relies on TaskSelectionHistory
-// to learn from past selections. represented using dashed arrows in the diagram.
-// Settings.UserSettings, Settings.AI_Settings used to fetch values ( dependency )

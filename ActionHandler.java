@@ -33,7 +33,7 @@ public class ActionHandler {
 
             if (input.isEmpty()) {
                 render(name, importance, urgency, effort, length, "ENTER TASK NAME", "ERROR: Name cannot be empty");
-                sleep();
+                Utils.sleep();
                 continue;
             }
 
@@ -51,7 +51,7 @@ public class ActionHandler {
         taskManager.addTask(task);
 
         render(name, importance, urgency, effort, length, "TASK CREATED SUCCESSFULLY!", "");
-        sleep();
+        Utils.sleep();
     }
 
     // ---------------- STEP INPUT (1-10) ----------------
@@ -70,7 +70,7 @@ public class ActionHandler {
                 if (value < 1 || value > 10) {
                     render(name, importance, urgency, effort, length,
                             "ENTER " + field + " (1-10)", "ERROR: Value must be between 1 and 10");
-                    sleep();
+                    Utils.sleep();
                     continue;
                 }
                 return value;
@@ -78,7 +78,7 @@ public class ActionHandler {
             } catch (NumberFormatException e) {
                 render(name, importance, urgency, effort, length,
                         "ENTER " + field + " (1-10)", "ERROR: Invalid number");
-                sleep();
+                Utils.sleep();
             }
         }
     }
@@ -87,8 +87,25 @@ public class ActionHandler {
 
     private static void render(String name, int importance, int urgency, int effort, int length, String title, String error) {
 
-        UI.cls(); // clears the terminal b4 drawing 
+        String status="Status Couldn't be determined";
+
+        UI.cls();
+
+        if ("ONLINE".equals(Status.get())){
+            status = Status.get() + " " ;
+        }else{
+            status= Status.get() + " - Press S to Retry Sync ";
+        }
+
         System.out.println();
+        UI.printFullWidth("*");
+        UI.printCenter("████████   █████    █████   ██   ██    ██   ██");
+        UI.printCenter("   ██     ██   ██   ██      ██  ██      ██ ██ ");
+        UI.printCenter("   ██     ███████   █████   █████        ███   ");
+        UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
+        UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
+        UI.printFullWidth("-");
+        UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
         UI.printFullWidth("=");
         UI.printEmpty();
         UI.printCenter("--- ADD TASK ---");
@@ -114,11 +131,5 @@ public class ActionHandler {
         UI.printFullWidth("=");
     }
 
-    // ---------------- UTILITIES ----------------
-// pauses for 1.2 seconds before showing an error or success message 
-    private static void sleep() {
-        try {
-            Thread.sleep(1200);
-        } catch (InterruptedException ignored) {}
-    }
+
 }

@@ -59,8 +59,25 @@ public class PendingTasksViewMenu extends Menu {
     @Override
     protected void render() {
 
+        String status="Status Couldn't be determined";
+
         UI.cls();
+
+        if ("ONLINE".equals(Status.get())){
+            status = Status.get() + " " ;
+        }else{
+            status= Status.get() + " - Restart to sync";
+        }
+
         System.out.println();
+        UI.printFullWidth("*");
+        UI.printCenter("████████   █████    █████   ██   ██    ██   ██");
+        UI.printCenter("   ██     ██   ██   ██      ██  ██      ██ ██ ");
+        UI.printCenter("   ██     ███████   █████   █████        ███   ");
+        UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
+        UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
+        UI.printFullWidth("-");
+        UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
         UI.printFullWidth("=");
         UI.printEmpty();
         UI.printCenter("--- " + getItemsHeader() + " ---");

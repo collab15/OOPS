@@ -4,13 +4,11 @@ public class MainMenu extends Menu {
 
     private final TaskManager taskManager;
     private final SessionManager sessionManager;
-    private final AIEngine ai;
 
-    public MainMenu(TaskManager taskManager, SessionManager sessionManager, AIEngine ai) {
+    public MainMenu(TaskManager taskManager, SessionManager sessionManager) {
 
         this.taskManager    = taskManager;
         this.sessionManager = sessionManager;
-        this.ai             = ai;
 
         setMenuSelections(
             "Start a Task",
@@ -26,7 +24,7 @@ public class MainMenu extends Menu {
     @Override
     public void reset() {
         super.reset();
-        menuItems = ai.suggestTasks(); // refresh suggested tasks
+        menuItems = AIEngine.suggestTasks(); // refresh suggested tasks
     }
 
     @Override
