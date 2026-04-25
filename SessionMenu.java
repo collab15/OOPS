@@ -46,6 +46,7 @@ public class SessionMenu extends Menu {
                         // onTimerComplete() already ran in SessionManager,
                         // so we just exit active mode and go back to selecting
                         if (!sessionManager.isSessionActive()) {
+
                             refreshing = false;
                             mode = Mode.SELECTING;
                             enterSelectingMode();
@@ -190,9 +191,7 @@ public class SessionMenu extends Menu {
         }
         else if (mode == Mode.COMPLETED) {
 
-            UI.printCenter("Pomodoro  :  25 minutes, classic focus session");
-            UI.printEmpty();
-            UI.printCenter("Custom    :  you enter the duration in minutes");
+            UI.printCenter("TASK COMPLETED");
         }
 
         UI.printEmpty();
@@ -265,10 +264,9 @@ public class SessionMenu extends Menu {
 
             Task topSuggested = suggestions.isEmpty() ? selected : suggestions.get(0);
 
-            // FIX 1: DO NOT call learn() manually anymore
-            // FIX 2: keep async to avoid UI freeze
             new Thread(() -> {
                 AIEngine.observeTaskSelection(selected, topSuggested);
+                AIEngine.learn(); // learn from selection
             }).start();
 
             enterChoosingTimerMode(selected);
