@@ -14,7 +14,6 @@ public class LearningEngine {
         this.learningFactor = learningFactor;
         this.extentOfBacklogToLearnFrom = extentOfBacklogToLearnFrom;
         this.history = history;
-        TaskSelectionHistory.loadFromFile();
     }
 
     public Delta calculateCumulativeDelta() {
