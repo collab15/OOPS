@@ -43,7 +43,10 @@ public abstract class Menu {
 
             if      ("UP".equals(key))        moveUp();
             else if ("DOWN".equals(key))      moveDown();
-            else if ("BACKSPACE".equals(key)) { if (Navigator.canGoBack()) return null; }
+            else if ("BACKSPACE".equals(key)) {
+                if (Navigator.canGoBack()) return null;
+                continue; // can't go back — silently ignore, no redraw needed
+            }
             else if ("ENTER".equals(key))     { return handleSelection(); }
 
             render();
