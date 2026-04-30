@@ -9,6 +9,7 @@ public class SessionManager implements TimerListener {
     private Timer timer;                  // set when session starts, not at construction
     private boolean sessionActive = false;
     private final TaskManager taskManager;
+    private int sessionDuration = 0;
 
     public SessionManager(TaskManager taskManager) {
         this.taskManager = taskManager;
@@ -27,6 +28,11 @@ public class SessionManager implements TimerListener {
         this.timer    = chosenTimer;
         currentTask   = task;
         sessionActive = true;
+
+        // BUG FIX: Record the full duration before starting the timer.
+        // getTimeRemaining() returns the full duration before start() is called.
+        sessionDuration = chosenTimer.getTimeRemaining();
+
         timer.start(task);
     }
 
@@ -61,7 +67,9 @@ public class SessionManager implements TimerListener {
     public void onTimerInterrupted(int timeRemaining) {
         if (currentTask == null) return;
         sessionActive = false;
-        currentTask.reduceLength(timeRemaining);
+        int timeSpent = sessionDuration - timeRemaining;
+        currentTask.reduceLength(timeSpent);
+
         currentTask = null;
     }
 }
