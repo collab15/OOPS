@@ -18,11 +18,4 @@ public class PrioritizedTask {
     public Task getTask() { 
         return task; 
     }
-
-
-    // need to add a comparing method
-    /*@Override
-    public int compareTo(PrioritizedTask other) {
-        return Double.compare(other.priority, this.priority);
-    }*/
 }
