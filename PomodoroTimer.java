@@ -1,6 +1,5 @@
 // A 25-minute timer — a named specialization of SimpleTimer.
 // Exists so that SessionManager and any other caller can express intent
-// clearly: new PomodoroTimer(this) vs new SimpleTimer(this, someNumber).
 public class PomodoroTimer extends SimpleTimer {
 
     private static final int POMODORO_DURATION = 25 * 60; // 25 minutes in seconds
