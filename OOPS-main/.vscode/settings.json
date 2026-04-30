@@ -1,6 +1,0 @@
-{
-  "java.project.referencedLibraries": [
-    "lib/**/*.jar"
-  ]
-}
-// this means load all .jar files inside a folder called lib
