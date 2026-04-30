@@ -4,10 +4,8 @@ import java.util.List;
 
 public class TaskSelectionHistory {
 
-    // instance field history belongs to one history object, not a global
-    private static List<Delta> deltas = new ArrayList<>();  // stores all the deltas
-
-    private static String filePath;
+    private List<Delta> deltas = new ArrayList<>();
+    private String filePath;
 
     public TaskSelectionHistory() {
 
@@ -49,8 +47,7 @@ public class TaskSelectionHistory {
     // SAVE WITH SAFETY
     // =========================
     private void saveToFile() {
-
-        File tempFile = new File(filePath);
+        File tempFile  = new File(filePath + ".tmp");
         File finalFile = new File(filePath);
 
         try (ObjectOutputStream oos =
@@ -67,12 +64,8 @@ public class TaskSelectionHistory {
             System.err.println("[History] Save failed: " + e.getMessage());
         }
     }
-
-    // =========================
-    // LOAD WITH RECOVERY
-    // =========================
     @SuppressWarnings("unchecked")
-    public static void loadFromFile() {
+    public void loadFromFile() {
 
         File file = new File(filePath);
         if (!file.exists()) return;
