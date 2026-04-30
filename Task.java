@@ -70,12 +70,13 @@ public class Task implements Serializable {
         if (this == o) return true;
         if (!(o instanceof Task)) return false;
         Task task = (Task) o;
+        if (id == null || task.id == null) return false;
         return id.equals(task.id);
     }
 
     @Override
     public int hashCode() {
-        return id.hashCode();
+        return id != null ? id.hashCode() : 0;
     }
 
 }
