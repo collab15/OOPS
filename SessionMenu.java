@@ -188,7 +188,6 @@ public class SessionMenu extends Menu {
             UI.printEmpty();
             UI.printCenter("Custom    :  you enter the duration in minutes");
         }
-        // BUG FIX: removed dead COMPLETED render block — mode no longer exists.
 
         UI.printEmpty();
         UI.printFullWidth("-");
