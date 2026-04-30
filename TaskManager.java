@@ -5,7 +5,6 @@ import java.util.UUID;
 
 public class TaskManager {
 
-    // Instance fields — NOT static.
     private List<Task> pendingTasks   = new ArrayList<>();
     private List<Task> completedTasks = new ArrayList<>();
 
