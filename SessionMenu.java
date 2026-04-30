@@ -10,8 +10,7 @@ import java.util.Scanner;
 // countdown is visible without needing a keypress.
 public class SessionMenu extends Menu {
 
-    private enum Mode { SELECTING, CHOOSING_TIMER, ACTIVE, COMPLETED}
-
+    private enum Mode { SELECTING, CHOOSING_TIMER, ACTIVE }
     private final SessionManager sessionManager;
     private List<Task> tasks;
     private Task selectedTask = null;
@@ -125,7 +124,7 @@ public class SessionMenu extends Menu {
             case ACTIVE:         return sessionManager.isSessionPaused()
                                         ? "SESSION PAUSED"
                                         : "SESSION IN PROGRESS";
-            default:             return "SESSION COMPLETED";
+            default:             return "";
         }
     }
 
@@ -189,10 +188,7 @@ public class SessionMenu extends Menu {
             UI.printEmpty();
             UI.printCenter("Custom    :  you enter the duration in minutes");
         }
-        else if (mode == Mode.COMPLETED) {
-
-            UI.printCenter("TASK COMPLETED");
-        }
+        // BUG FIX: removed dead COMPLETED render block — mode no longer exists.
 
         UI.printEmpty();
         UI.printFullWidth("-");
