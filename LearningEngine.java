@@ -1,28 +1,35 @@
 import java.util.List;
 
+// Looks at the last N task selections the user made and works out how
+// the weights should shift. Nothing is written here — it returns a Delta
+// and lets AIEngine decide when to apply it.
 public class LearningEngine {
 
-    private double learningFactor; // controls how strong the learning is ex slow(0.1) full (1.0) aggressive (x>1)
-    private int extentOfBacklogToLearnFrom; // how many past task selections to learn from
+    // 0.1 = cautious / slow drift, 0.3 = default, >1.0 = very aggressive
+    private double learningFactor;
+
+    // how far back in history to look — older selections are included
+    // but their influence is diluted by the average
+    private int extentOfBacklogToLearnFrom;
 
     private TaskSelectionHistory history;
 
     public LearningEngine(double learningFactor,
                           int extentOfBacklogToLearnFrom,
                           TaskSelectionHistory history) {
-
-        this.learningFactor = learningFactor;
-        this.extentOfBacklogToLearnFrom = extentOfBacklogToLearnFrom;
-        this.history = history;
+        this.learningFactor              = learningFactor;
+        this.extentOfBacklogToLearnFrom  = extentOfBacklogToLearnFrom;
+        this.history                     = history;
     }
 
+    // sums all recent deltas, averages them so a single outlier doesn't
+    // dominate, then scales by the learningFactor
     public Delta calculateCumulativeDelta() {
 
-        List<Delta> deltaBacklog =
-                history.getDeltaBacklog(extentOfBacklogToLearnFrom);
+        List<Delta> deltaBacklog = history.getDeltaBacklog(extentOfBacklogToLearnFrom);
 
         if (deltaBacklog.isEmpty()) {
-            return new Delta(0, 0, 0, 0);
+            return new Delta(0, 0, 0, 0); // nothing to learn from yet
         }
 
         double d_importance = 0;
@@ -30,7 +37,6 @@ public class LearningEngine {
         double d_effort     = 0;
         double d_length     = 0;
 
-        // going thru each past learning event in the backlog and summing it to get a cumulative delta
         for (Delta delta : deltaBacklog) {
             d_importance += delta.getImportance();
             d_urgency    += delta.getUrgency();
@@ -40,13 +46,13 @@ public class LearningEngine {
 
         int n = deltaBacklog.size();
 
-        // averaging ensures stable learning behavior
+        // average across all signals so the result doesn't blow up as history grows
         d_importance /= n;
         d_urgency    /= n;
         d_effort     /= n;
         d_length     /= n;
 
-        // apply learning strength
+        // scale by how aggressively we want weights to move
         d_importance *= learningFactor;
         d_urgency    *= learningFactor;
         d_effort     *= learningFactor;
