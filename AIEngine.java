@@ -1,87 +1,80 @@
 import java.io.*;
 import java.util.List;
 
-// AIEngine is the main branch it suggests tasks using heuristic engine and learns from the task selection history using learning engine
-// AIEngine is a composition of HeuristicEngine LearningEngine and Weights
+// Facade that ties HeuristicEngine and LearningEngine together.
+// The rest of the app only calls AIEngine — it never touches the
+// two sub-engines or the weights directly.
+//
+// Data flow:
+//   suggestTasks()          → HeuristicEngine scores pending tasks with current weights
+//   observeTaskSelection()  → stores a Delta (what the user picked vs. what we suggested)
+//   learn()                 → LearningEngine averages past deltas → apply to weights → save
 public class AIEngine {
 
-    private static int numberOfTasksToSuggest;
+    private static int     numberOfTasksToSuggest;
     private static Weights weights;
 
-    private static LearningEngine learningEngine;
-    private static HeuristicEngine heuristicEngine;
+    private static LearningEngine       learningEngine;
+    private static HeuristicEngine      heuristicEngine;
     private static TaskSelectionHistory taskSelectionHistory;
 
     private static TaskManager taskManager;
 
     private static double learningFactor;
-    private static int extentOfBacklogToLearnFrom;
+    private static int    extentOfBacklogToLearnFrom;
 
     public static void init(TaskManager tm) {
 
-        loadState();// AI internal state (AUTO initialized)
+        loadState(); // load weights from disk (or use defaults if file is missing)
 
         taskManager = tm;
 
-        // how many tasks to suggest is determined by user settings
-        numberOfTasksToSuggest = Settings.UserSettings.getSuggestionCount();
-
-        // learning factor and backlog size are determined by AI settings
-        learningFactor = Settings.AI_Settings.getLearningFactor();
+        numberOfTasksToSuggest     = Settings.UserSettings.getSuggestionCount();
+        learningFactor             = Settings.AI_Settings.getLearningFactor();
         extentOfBacklogToLearnFrom = Settings.AI_Settings.getBacklogSize();
 
         taskSelectionHistory = new TaskSelectionHistory();
 
-        // responsible for learning from past task selection history
         learningEngine = new LearningEngine(
-                learningFactor,
-                extentOfBacklogToLearnFrom,
-                taskSelectionHistory
+            learningFactor,
+            extentOfBacklogToLearnFrom,
+            taskSelectionHistory
         );
 
-        // responsible for suggesting tasks based on current weights and pending tasks
         heuristicEngine = new HeuristicEngine(
-                numberOfTasksToSuggest,
-                weights
+            numberOfTasksToSuggest,
+            weights
         );
     }
 
+    // called by MainMenu.reset() and SessionMenu every time the list is displayed
     public static List<Task> suggestTasks() {
-
-        // using the internal taskManager instance
-        List<Task> pendingTasks = taskManager.getPendingTasks();
-
-        return heuristicEngine.suggestTasks(pendingTasks);
+        return heuristicEngine.suggestTasks(taskManager.getPendingTasks());
     }
 
-    // user feedback entry point (stores learning signal internally)
+    // records what the user picked vs. what we suggested so we can learn from it
     public static void observeTaskSelection(Task task, Task suggested) {
-
         Delta delta = Delta.fromTaskComparison(task, suggested);
-
         taskSelectionHistory.addDelta(delta);
     }
 
-    // calls LearningEngine to analyse past data and produce a delta the change in weight
-    // apply those changes to weights
+    // runs after every task selection — keeps weights drifting toward the user's habits
     public static void learn() {
-
         Delta cumulativeDelta = learningEngine.calculateCumulativeDelta();
         weights.applyDelta(cumulativeDelta);
-
         saveState();
     }
 
+    // reads weights from weights.sys; falls back to hand-tuned defaults if the
+    // file is missing, empty, or in an unexpected format
     public static void loadState() {
 
         String baseDir = Settings.AppSettings.getLocalStorageDirectory();
         File file = new File(baseDir, "weights.sys");
 
-        // default fallback values
-        double d1 = 0.4, d2 = 0.5, d3 = -0.2, d4 = -0.1;
+        double d1 = 0.4, d2 = 0.5, d3 = -0.2, d4 = -0.1; // sensible starting point
 
         try {
-
             if (!file.exists()) {
                 weights = new Weights(d1, d2, d3, d4);
                 return;
@@ -103,16 +96,15 @@ public class AIEngine {
                     return;
                 }
 
-                double w1 = Double.parseDouble(parts[0]);
-                double w2 = Double.parseDouble(parts[1]);
-                double w3 = Double.parseDouble(parts[2]);
-                double w4 = Double.parseDouble(parts[3]);
-
-                weights = new Weights(w1, w2, w3, w4);
+                weights = new Weights(
+                    Double.parseDouble(parts[0]),
+                    Double.parseDouble(parts[1]),
+                    Double.parseDouble(parts[2]),
+                    Double.parseDouble(parts[3])
+                );
             }
 
         } catch (Exception e) {
-            //fallback
             weights = new Weights(d1, d2, d3, d4);
         }
     }
@@ -123,14 +115,12 @@ public class AIEngine {
         File file = new File(baseDir, "weights.sys");
 
         try (PrintWriter writer = new PrintWriter(file)) {
-
             writer.println(
-                    weights.getImportance() + " " +
-                    weights.getUrgency() + " " +
-                    weights.getEffort() + " " +
-                    weights.getLength()
+                weights.getImportance() + " " +
+                weights.getUrgency()    + " " +
+                weights.getEffort()     + " " +
+                weights.getLength()
             );
-
         } catch (Exception e) {
             e.printStackTrace();
         }
