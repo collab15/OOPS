@@ -1,16 +1,15 @@
 import java.util.List;
 import java.util.Scanner;
 
-// Three-phase menu:
-//   Phase 1 (SELECTING)      — pick a task from the list
-//   Phase 2 (CHOOSING_TIMER) — pick Pomodoro (25 min) or Custom duration
-//   Phase 3 (ACTIVE)         — session running, can pause/resume or stop
-//
-// In ACTIVE mode a refresh thread redraws the screen every second so the
-// countdown is visible without needing a keypress.
+// Three-phase session screen.
+// SELECTING      — pick a task from the list
+// CHOOSING_TIMER — pick Pomodoro (25 min) or a custom duration
+// ACTIVE         — session is running; a background thread redraws the
+//                  countdown every second without needing a keypress
 public class SessionMenu extends Menu {
 
     private enum Mode { SELECTING, CHOOSING_TIMER, ACTIVE }
+
     private final SessionManager sessionManager;
     private List<Task> tasks;
     private Task selectedTask = null;
@@ -18,7 +17,7 @@ public class SessionMenu extends Menu {
 
     private final Scanner scanner = new Scanner(System.in);
 
-    // ---- Refresh thread fields ----
+    // redraws the timer every second while a session is active
     private Thread refreshThread;
     private volatile boolean refreshing = false;
 
@@ -28,10 +27,7 @@ public class SessionMenu extends Menu {
         enterSelectingMode();
     }
 
-    // ---- Refresh thread ----
-
-    // Starts a background thread that redraws the screen every second.
-    // Only active during ACTIVE mode so we can see the countdown tick.
+    // starts the background redraw loop
     private void startRefreshThread() {
         refreshing    = true;
         refreshThread = new Thread(() -> {
@@ -41,13 +37,10 @@ public class SessionMenu extends Menu {
                     if (refreshing && mode == Mode.ACTIVE) {
                         render();
 
-                        // Timer finished naturally — session ended on its own
-                        // onTimerComplete() already ran in SessionManager,
-                        // so we just exit active mode and go back to selecting
+                        // timer finished naturally — go back to selecting
                         if (!sessionManager.isSessionActive()) {
-
                             refreshing = false;
-                            mode = Mode.SELECTING;
+                            mode       = Mode.SELECTING;
                             enterSelectingMode();
                             render();
                         }
@@ -61,18 +54,13 @@ public class SessionMenu extends Menu {
         refreshThread.start();
     }
 
-    // Stops the refresh thread cleanly.
     private void stopRefreshThread() {
         refreshing = false;
-        if (refreshThread != null) {
-            refreshThread.interrupt();
-        }
+        if (refreshThread != null) refreshThread.interrupt();
     }
 
-    // ---- Mode transitions ----
-
     private void enterSelectingMode() {
-        stopRefreshThread(); // always stop refreshing when leaving ACTIVE
+        stopRefreshThread();
         mode         = Mode.SELECTING;
         selectedTask = null;
         currentIndex = 0;
@@ -82,9 +70,7 @@ public class SessionMenu extends Menu {
         if (tasks.isEmpty()) {
             setMenuSelections("Back");
         } else {
-            for (Task t : tasks) {
-                menuSelections.add(t.getName());
-            }
+            for (Task t : tasks) menuSelections.add(t.getName());
         }
     }
 
@@ -93,11 +79,7 @@ public class SessionMenu extends Menu {
         selectedTask = task;
         currentIndex = 0;
         menuSelections.clear();
-        setMenuSelections(
-            "Pomodoro  (25 min)",
-            "Custom Duration",
-            "Back"
-        );
+        setMenuSelections("Pomodoro  (25 min)", "Custom Duration", "Back");
     }
 
     private void enterActiveMode() {
@@ -114,8 +96,6 @@ public class SessionMenu extends Menu {
         setMenuSelections("Resume", "Stop Session");
     }
 
-    // ---- Header ----
-
     @Override
     protected String getItemsHeader() {
         switch (mode) {
@@ -128,16 +108,12 @@ public class SessionMenu extends Menu {
         }
     }
 
-    // ---- Custom render ----
-
     @Override
     protected void render() {
 
-        String status="Status Couldn't be determined";
-
         UI.cls();
 
-        status = Status.get() + " ";
+        String status = Status.get() + " ";
 
         System.out.println();
         UI.printFullWidth("*");
@@ -147,7 +123,7 @@ public class SessionMenu extends Menu {
         UI.printCenter("   ██     ██   ██      ██   ██  ██      ██ ██  ");
         UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
         UI.printFullWidth("-");
-        UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status);
+        UI.printAtMargins(Utils.getWeekDayAndDate() + " ", status);
         UI.printFullWidth("=");
         UI.printEmpty();
         UI.printCenter("--- " + getItemsHeader() + " ---");
@@ -167,18 +143,16 @@ public class SessionMenu extends Menu {
             if (sessionManager.isSessionPaused()) {
                 UI.printCenter("[ PAUSED ]");
             }
-        }
 
-        else if (mode == Mode.SELECTING) {
+        } else if (mode == Mode.SELECTING) {
 
             if (tasks.isEmpty()) {
                 UI.printCenter("No tasks available.");
             } else {
                 UI.printCenter("UP / DOWN to scroll   ENTER to select   BACKSPACE to go back");
             }
-        }
 
-        else if (mode == Mode.CHOOSING_TIMER) {
+        } else if (mode == Mode.CHOOSING_TIMER) {
 
             UI.printCenter("Pomodoro  :  25 minutes, classic focus session");
             UI.printEmpty();
@@ -199,8 +173,6 @@ public class SessionMenu extends Menu {
 
         UI.printFullWidth("=");
     }
-
-    // ---- Display loop ----
 
     @Override
     public Menu display() {
@@ -238,43 +210,41 @@ public class SessionMenu extends Menu {
         }
     }
 
-    // ---- Handle selection ----
-
     @Override
     Menu handleSelection() {
 
-        // ---- SELECTING ----
+        // SELECTING: record the user's choice, let the AI observe it,
+        // then move to the timer picker
         if (mode == Mode.SELECTING) {
 
             if (tasks.isEmpty()) return null;
 
             List<Task> suggestions = AIEngine.suggestTasks();
-
-            Task selected = tasks.get(currentIndex);
-            selectedTask = selected;
+            Task selected          = tasks.get(currentIndex);
+            selectedTask           = selected;
 
             Task topSuggested = suggestions.isEmpty() ? selected : suggestions.get(0);
 
+            // learning runs on a background thread so it doesn't block the UI
             new Thread(() -> {
                 AIEngine.observeTaskSelection(selected, topSuggested);
-                AIEngine.learn(); // learn from selection
+                AIEngine.learn();
             }).start();
 
             enterChoosingTimerMode(selected);
             return this;
         }
 
-        // ---- CHOOSING TIMER ----
+        // CHOOSING_TIMER: start the session with the chosen timer
         if (mode == Mode.CHOOSING_TIMER) {
 
             switch (currentIndex) {
-
-                case 0:
+                case 0: // Pomodoro
                     sessionManager.startSession(selectedTask, new PomodoroTimer(sessionManager));
                     enterActiveMode();
                     return this;
 
-                case 1:
+                case 1: // Custom duration
                     int minutes = askForDuration();
                     if (minutes > 0) {
                         sessionManager.startSession(
@@ -285,12 +255,13 @@ public class SessionMenu extends Menu {
                     }
                     return this;
 
-                case 2:
+                case 2: // Back
                     enterSelectingMode();
                     return this;
             }
         }
 
+        // ACTIVE: pause/resume/stop controls
         String selected = menuSelections.get(currentIndex);
 
         if ("Pause".equals(selected)) {
@@ -312,25 +283,22 @@ public class SessionMenu extends Menu {
         return this;
     }
 
-    // ---- Ask for custom duration ----
-
+    // temporarily hands control to Scanner for a number input,
+    // then gives control back to KeyboardListener when done
     private int askForDuration() {
 
         KeyboardListener.pause();
 
         int minutes = 0;
 
-        String status="Status Couldn't be determined";
-
         while (true) {
-            
+
             UI.cls();
 
-            if ("ONLINE".equals(Status.get())){
-                status = Status.get() + " " ;
-            }else{
-                status= Status.get() + " - Restart to sync";
-            }
+            String status = "ONLINE".equals(Status.get())
+                    ? Status.get() + " "
+                    : Status.get() + " - Restart to sync";
+
             System.out.println();
             UI.printFullWidth("*");
             UI.printCenter("████████   █████    █████   ██   ██    ██   ██");
@@ -339,7 +307,7 @@ public class SessionMenu extends Menu {
             UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
             UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
             UI.printFullWidth("-");
-            UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
+            UI.printAtMargins(Utils.getWeekDayAndDate() + " ", status);
             UI.printFullWidth("=");
             UI.printEmpty();
             UI.printCenter("--- " + getItemsHeader() + " ---");
@@ -361,8 +329,7 @@ public class SessionMenu extends Menu {
         return minutes;
     }
 
-    // ---- Utilities ----
-
+    // formats seconds as MM : SS for the countdown display
     private String formatTime(int totalSeconds) {
         return String.format("%02d : %02d",
                 totalSeconds / 60,
