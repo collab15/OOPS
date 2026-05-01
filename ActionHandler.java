@@ -1,29 +1,28 @@
 import java.util.Scanner;
 
-// Handles user input flows that require the keyboard to be in scanner mode
-// KeyboardListener is paused and stdin is used directly
-// Receives the shared TaskManager from Main so tasks are added to the same
-// list that the rest of the app reads from.
+// Handles the "Add Task" input flow. KeyboardListener is paused for
+// the duration so raw arrow-key bytes don't land in the Scanner buffer,
+// then resumed once the task is saved.
 public class ActionHandler {
 
     private static final Scanner scanner = new Scanner(System.in);
 
-    // taskManager is now passed in — not created here — so this class
-    // works on the same task list as the rest of the app.
+    // taskManager is passed in from MainMenu so we're adding to the same
+    // list the rest of the app reads — no separate instance needed here
     public static void addTask(TaskManager taskManager) {
 
-        // Consume any leftover newline from previous input
+        // drain any leftover newline from previous Scanner or keyboard input
         if (scanner.hasNextLine()) {
             scanner.nextLine();
         }
 
-        String name       = "";
-        int importance    = 0;
-        int urgency       = 0;
-        int effort        = 0;
-        int length        = 0;
+        String name    = "";
+        int importance = 0;
+        int urgency    = 0;
+        int effort     = 0;
+        int length     = 0;
 
-        // STEP 1: NAME
+        // step 1: task name — can't be blank
         while (true) {
             render(name, importance, urgency, effort, length, "ENTER TASK NAME", "");
             UI.printEmpty();
@@ -32,7 +31,8 @@ public class ActionHandler {
             String input = scanner.nextLine();
 
             if (input.isEmpty()) {
-                render(name, importance, urgency, effort, length, "ENTER TASK NAME", "ERROR: Name cannot be empty");
+                render(name, importance, urgency, effort, length, "ENTER TASK NAME",
+                        "ERROR: Name cannot be empty");
                 Utils.sleep();
                 continue;
             }
@@ -41,7 +41,7 @@ public class ActionHandler {
             break;
         }
 
-        // STEPS 2-5: NUMERIC FIELDS
+        // steps 2–5: numeric fields, each validated to 1–10 before moving on
         importance = inputStep("IMPORTANCE", name, importance, urgency, effort, length);
         urgency    = inputStep("URGENCY",    name, importance, urgency,  effort, length);
         effort     = inputStep("EFFORT",     name, importance, urgency,  effort, length);
@@ -54,22 +54,26 @@ public class ActionHandler {
         Utils.sleep();
     }
 
-    // ---------------- STEP INPUT (1-10) ----------------
-
-    private static int inputStep(String field, String name, int importance, int urgency, int effort, int length) {
+    // shared input loop for each numeric field — loops until the user
+    // enters something that parses to an integer in [1, 10]
+    private static int inputStep(String field, String name,
+                                 int importance, int urgency,
+                                 int effort, int length) {
         while (true) {
-            render(name, importance, urgency, effort, length, "ENTER " + field + " (1-10)", "");
+            render(name, importance, urgency, effort, length,
+                    "ENTER " + field + " (1-10)", "");
             UI.printEmpty();
             UI.inputCenter(field + ": ");
 
-            String input = scanner.nextLine().trim(); // .trim() removes any leading spaces 
+            String input = scanner.nextLine().trim();
 
             try {
-                int value = Integer.parseInt(input); // to avoid NumberFormatException
+                int value = Integer.parseInt(input);
 
                 if (value < 1 || value > 10) {
                     render(name, importance, urgency, effort, length,
-                            "ENTER " + field + " (1-10)", "ERROR: Value must be between 1 and 10");
+                            "ENTER " + field + " (1-10)",
+                            "ERROR: Value must be between 1 and 10");
                     Utils.sleep();
                     continue;
                 }
@@ -83,19 +87,17 @@ public class ActionHandler {
         }
     }
 
-    // ---------------- RENDER ----------------
-
-    private static void render(String name, int importance, int urgency, int effort, int length, String title, String error) {
-
-        String status="Status Couldn't be determined";
+    // redraws the "Add Task" form with whatever has been filled in so far
+    // so the user always sees their progress while typing each field
+    private static void render(String name, int importance, int urgency,
+                               int effort, int length,
+                               String title, String error) {
 
         UI.cls();
 
-        if ("ONLINE".equals(Status.get())){
-            status = Status.get() + " " ;
-        }else{
-            status= Status.get() + " - Press S to Retry Sync ";
-        }
+        String status = "ONLINE".equals(Status.get())
+                ? Status.get() + " "
+                : Status.get() + " - Press S to Retry Sync ";
 
         System.out.println();
         UI.printFullWidth("*");
@@ -105,17 +107,18 @@ public class ActionHandler {
         UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
         UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
         UI.printFullWidth("-");
-        UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
+        UI.printAtMargins(Utils.getWeekDayAndDate() + " ", status);
         UI.printFullWidth("=");
         UI.printEmpty();
         UI.printCenter("--- ADD TASK ---");
         UI.printEmpty();
 
-        UI.printCenter("NAME       : " + (name.isEmpty() ? "-" : name));
-        UI.printCenter("IMPORTANCE : " + (importance == 0 ? "-" : importance));
-        UI.printCenter("URGENCY    : " + (urgency    == 0 ? "-" : urgency));
-        UI.printCenter("EFFORT     : " + (effort     == 0 ? "-" : effort));
-        UI.printCenter("LENGTH     : " + (length     == 0 ? "-" : length));
+        // show a dash for any field not yet filled in
+        UI.printCenter("NAME       : " + (name.isEmpty()   ? "-" : name));
+        UI.printCenter("IMPORTANCE : " + (importance == 0  ? "-" : importance));
+        UI.printCenter("URGENCY    : " + (urgency    == 0  ? "-" : urgency));
+        UI.printCenter("EFFORT     : " + (effort     == 0  ? "-" : effort));
+        UI.printCenter("LENGTH     : " + (length     == 0  ? "-" : length));
 
         UI.printEmpty();
         UI.printFullWidth("-");
@@ -130,6 +133,4 @@ public class ActionHandler {
         UI.printEmpty();
         UI.printFullWidth("=");
     }
-
-
 }
