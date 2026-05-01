@@ -13,7 +13,7 @@ public class Main {
         UI.printCenter("████████   █████    █████   ██   ██    ██   ██");
         UI.printCenter("   ██     ██   ██   ██      ██  ██      ██ ██ ");
         UI.printCenter("   ██     ███████   █████   █████        ███  ");
-        UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
+        UI.printCenter("   ██     ██   ██      ██   ██  ██      ██ ██ ");
         UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
         UI.printEmpty();
         UI.printFullWidth("=");

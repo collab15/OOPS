@@ -72,18 +72,14 @@ public abstract class Menu {
 
         UI.cls();
 
-        if ("ONLINE".equals(Status.get())){
-            status = Status.get() + " " ;
-        }else{
-            status= Status.get() + " - Restart to sync";
-        }
+        status = Status.get() + " ";
 
         System.out.println();
         UI.printFullWidth("*");
         UI.printCenter("████████   █████    █████   ██   ██    ██   ██");
         UI.printCenter("   ██     ██   ██   ██      ██  ██      ██ ██ ");
         UI.printCenter("   ██     ███████   █████   █████        ███   ");
-        UI.printCenter("    ██     ██   ██      ██   ██  ██      ██ ██  ");
+        UI.printCenter("   ██     ██   ██      ██   ██  ██      ██ ██  ");
         UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
         UI.printFullWidth("-");
         UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
