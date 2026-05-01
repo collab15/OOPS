@@ -2,6 +2,9 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
+// Persists the list of Deltas that the LearningEngine reads when it needs
+// to figure out how to adjust the weights. Survives restarts because it's
+// serialised to task_history.sys on every write.
 public class TaskSelectionHistory {
 
     private List<Delta> deltas = new ArrayList<>();
@@ -27,12 +30,13 @@ public class TaskSelectionHistory {
         }
     }
 
+    // returns the N most recent deltas in reverse-chronological order
+    // so the LearningEngine naturally weights recent behaviour more heavily
     public List<Delta> getDeltaBacklog(int n) {
 
         if (n <= 0) return new ArrayList<>();
 
         List<Delta> lastNDeltas = new ArrayList<>();
-
         int size  = deltas.size();
         int start = Math.max(0, size - n);
 
@@ -43,20 +47,19 @@ public class TaskSelectionHistory {
         return lastNDeltas;
     }
 
-    // =========================
-    // SAVE WITH SAFETY
-    // =========================
+    // writes to a .tmp file first, then renames — so a crash mid-write
+    // doesn't leave a half-written file that corrupts the history
     private void saveToFile() {
+
         File tempFile  = new File(filePath + ".tmp");
         File finalFile = new File(filePath);
 
         try (ObjectOutputStream oos =
-                     new ObjectOutputStream(new FileOutputStream(tempFile))) {
+                new ObjectOutputStream(new FileOutputStream(tempFile))) {
 
             oos.writeObject(deltas);
             oos.flush();
 
-            // atomic replace (prevents corruption)
             if (finalFile.exists()) finalFile.delete();
             tempFile.renameTo(finalFile);
 
@@ -64,6 +67,7 @@ public class TaskSelectionHistory {
             System.err.println("[History] Save failed: " + e.getMessage());
         }
     }
+
     @SuppressWarnings("unchecked")
     public void loadFromFile() {
 
@@ -71,7 +75,7 @@ public class TaskSelectionHistory {
         if (!file.exists()) return;
 
         try (ObjectInputStream ois =
-                     new ObjectInputStream(new FileInputStream(file))) {
+                new ObjectInputStream(new FileInputStream(file))) {
 
             Object obj = ois.readObject();
 
@@ -82,12 +86,9 @@ public class TaskSelectionHistory {
             }
 
         } catch (Exception e) {
-
+            // corrupted file — reset cleanly rather than crashing
             System.err.println("[History] Corrupted file detected, resetting history.");
-
             deltas = new ArrayList<>();
-
-            // optional recovery: delete bad file
             file.delete();
         }
     }
