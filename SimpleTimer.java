@@ -1,15 +1,19 @@
-// General-purpose countdown timer that runs on a background thread.
-// Supports start, pause, resume, and stop.
-// Notifies a TimerListener when the timer finishes naturally or is stopped early.
+// General-purpose countdown timer that ticks on a background thread.
+// The main thread (UI / keyboard) and the timer thread share three
+// volatile fields — running, paused, timeRemaining — which is safe
+// because volatile guarantees visibility across threads for simple reads
+// and writes. The pauseLock object is used for the more coordinated
+// pause/resume dance where one thread needs to wait for the other.
 public class SimpleTimer implements Timer {
 
     private final TimerListener listener;
-    private final int duration;            // total duration in seconds
+    private final int duration;           // total seconds this timer runs for
     private volatile int timeRemaining;
     private volatile boolean running = false;
     private volatile boolean paused  = false;
 
-    private final Object pauseLock = new Object(); // used to block/unblock the timer thread
+    // any thread that wants to pause or wake the timer must hold this lock
+    private final Object pauseLock = new Object();
 
     private Thread timerThread;
 
@@ -23,37 +27,39 @@ public class SimpleTimer implements Timer {
 
         if (running) return;
 
-        running = true;
-        paused  = false;
+        running       = true;
+        paused        = false;
         timeRemaining = duration;
 
         timerThread = new Thread(() -> {
             try {
                 while (timeRemaining > 0 && running) {
 
-                    // If paused, block here until resume() calls notify
+                    // if pause() was called, block here until resume() wakes us
                     synchronized (pauseLock) {
                         while (paused && running) {
-                            pauseLock.wait();
+                            pauseLock.wait();  // releases the lock while sleeping
                         }
                     }
 
-                    if (!running) break; // stop() was called while paused
+                    if (!running) break; // stop() called while we were paused
 
                     Thread.sleep(1000);
                     timeRemaining--;
                 }
 
+                // natural completion — only fire if nobody called stop()
                 if (running && timeRemaining == 0) {
                     running = false;
                     listener.onTimerComplete();
                 }
 
             } catch (InterruptedException e) {
-                // Interrupted by stop() — handled in finally
+                // stop() interrupted our sleep — fall through to finally
 
             } finally {
-                // Fire interrupted only if stopped early (not after natural completion)
+                // fire the interrupted callback only for early stops,
+                // not after a clean completion
                 if (!running && timeRemaining > 0) {
                     listener.onTimerInterrupted(timeRemaining);
                 }
@@ -61,7 +67,7 @@ public class SimpleTimer implements Timer {
 
         }, "timer-thread");
 
-        timerThread.setDaemon(true); // won't block JVM shutdown
+        timerThread.setDaemon(true); // won't keep the JVM alive if main exits
         timerThread.start();
     }
 
@@ -69,7 +75,7 @@ public class SimpleTimer implements Timer {
     public void pause() {
         if (!running || paused) return;
         paused = true;
-        // timer thread will block itself on next loop iteration
+        // the timer thread will see paused == true on its next loop and block itself
     }
 
     @Override
@@ -77,7 +83,7 @@ public class SimpleTimer implements Timer {
         if (!running || !paused) return;
         synchronized (pauseLock) {
             paused = false;
-            pauseLock.notifyAll(); // unblock the timer thread
+            pauseLock.notifyAll(); // wake up the waiting timer thread
         }
     }
 
@@ -87,38 +93,23 @@ public class SimpleTimer implements Timer {
 
         running = false;
 
-        // If paused, wake the thread up so it can exit cleanly
+        // if the timer is currently paused, wake it so it can exit cleanly
         synchronized (pauseLock) {
             paused = false;
             pauseLock.notifyAll();
         }
 
         if (timerThread != null) {
-            timerThread.interrupt(); // also wakes up sleep() immediately
+            timerThread.interrupt(); // also breaks out of Thread.sleep immediately
         }
     }
 
     @Override
-    public int getTimeRemaining() {
-        return timeRemaining;
-    }
+    public int getTimeRemaining() { return timeRemaining; }
 
     @Override
-    public boolean isRunning() {
-        return running;
-    }
+    public boolean isRunning() { return running; }
 
     @Override
-    public boolean isPaused() {
-        return paused;
-    }
+    public boolean isPaused()  { return paused; }
 }
-
-/*we have two threads running at the same time main thread running the ui -> keypresses wtvr
- and the timer thread counting down the seconds in the background and they both share the
-  same variables running paused timeRemaining if both threads read and write the variables 
-  at the same time can cause provbkems the synchronised pauseLock ensures only one thread can be here at a time 
-then the wait thing when thats called timer thread falls asleep stops executing lock released 
-main thread can now enter the synchronised block 
-
-the notifyAll() wakes up any thread sleeping in the pauseLock.wait() lock released */
