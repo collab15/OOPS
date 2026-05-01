@@ -1,15 +1,15 @@
 import java.util.List;
 
-// Two-phase menu:
-//   Phase 1 (BROWSING) — scroll through all pending tasks and pick one
-//   Phase 2 (ACTING)   — choose what to do: Start Task, Remove Task, or Back
+// Two-phase menu for browsing pending tasks.
+// Phase 1 (BROWSING): scroll the full pending list and pick one.
+// Phase 2 (ACTING):   choose what to do — start a session, remove it, or go back.
 public class PendingTasksViewMenu extends Menu {
 
     private enum Mode { BROWSING, ACTING }
 
-    private final TaskManager taskManager;
+    private final TaskManager    taskManager;
     private final SessionManager sessionManager;
-    private Mode mode = Mode.BROWSING;
+    private Mode mode         = Mode.BROWSING;
     private Task selectedTask = null;
 
     public PendingTasksViewMenu(TaskManager taskManager, SessionManager sessionManager) {
@@ -17,8 +17,6 @@ public class PendingTasksViewMenu extends Menu {
         this.sessionManager = sessionManager;
         enterBrowsingMode();
     }
-
-    // ---- Mode transitions ----
 
     private void enterBrowsingMode() {
         mode         = Mode.BROWSING;
@@ -31,9 +29,7 @@ public class PendingTasksViewMenu extends Menu {
         if (tasks.isEmpty()) {
             setMenuSelections("No Tasks — Back");
         } else {
-            for (Task t : tasks) {
-                menuSelections.add(t.getName());
-            }
+            for (Task t : tasks) menuSelections.add(t.getName());
         }
     }
 
@@ -45,8 +41,6 @@ public class PendingTasksViewMenu extends Menu {
         setMenuSelections("Start Task", "Remove Task", "Back");
     }
 
-    // ---- Header ----
-
     @Override
     protected String getItemsHeader() {
         return mode == Mode.ACTING
@@ -54,16 +48,12 @@ public class PendingTasksViewMenu extends Menu {
                 : "PENDING TASKS";
     }
 
-    // ---- Custom render ----
-
     @Override
     protected void render() {
 
-        String status="Status Couldn't be determined";
-
         UI.cls();
 
-        status = Status.get() + " ";
+        String status = Status.get() + " ";
 
         System.out.println();
         UI.printFullWidth("*");
@@ -73,7 +63,7 @@ public class PendingTasksViewMenu extends Menu {
         UI.printCenter("   ██     ██   ██      ██   ██  ██      ██ ██  ");
         UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
         UI.printFullWidth("-");
-        UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
+        UI.printAtMargins(Utils.getWeekDayAndDate() + " ", status);
         UI.printFullWidth("=");
         UI.printEmpty();
         UI.printCenter("--- " + getItemsHeader() + " ---");
@@ -106,8 +96,6 @@ public class PendingTasksViewMenu extends Menu {
         UI.printFullWidth("=");
     }
 
-    // ---- Display loop ----
-
     @Override
     public Menu display() {
 
@@ -138,8 +126,6 @@ public class PendingTasksViewMenu extends Menu {
         }
     }
 
-    // ---- Handle selection ----
-
     @Override
     Menu handleSelection() {
 
@@ -154,8 +140,7 @@ public class PendingTasksViewMenu extends Menu {
 
         // Mode.ACTING
         switch (currentIndex) {
-
-            case 0: // Start Task — open SessionMenu with just this one task
+            case 0: // Start Task — wrap the selected task in a list and open SessionMenu
                 List<Task> single = new java.util.ArrayList<>();
                 single.add(selectedTask);
                 return new SessionMenu(single, sessionManager);
