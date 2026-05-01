@@ -1,11 +1,13 @@
 public class Main {
+
     public static void main(String[] args) {
 
+        // start listening for arrow keys / Enter before anything else renders
         KeyboardListener.start();
 
         TaskManager taskManager = new TaskManager();
 
-        //intro screen
+        // intro / loading screen
         UI.cls();
         System.out.println();
         UI.printFullWidth("=");
@@ -22,17 +24,20 @@ public class Main {
         UI.printEmpty();
         UI.printFullWidth("=");
 
-        PartitionManager.sync(taskManager); // syncing storage and remote db
+        // sync with Supabase; sets Status to ONLINE or OFFLINE
+        PartitionManager.sync(taskManager);
 
-        taskManager.loadTasks();// loading tasks from storage
-
+        // load whatever .tsk files are now on disk into memory
+        taskManager.loadTasks();
 
         SessionManager sessionManager = new SessionManager(taskManager);
+
+        // loads weights and wires up the heuristic + learning engines
         AIEngine.init(taskManager);
 
-        // Pass AIEngine into MainMenu so it can re-suggest tasks on every visit
         Navigator.goTo(new MainMenu(taskManager, sessionManager));
 
+        // blocks here — processes key presses and drives menu transitions
         Navigator.run();
 
         KeyboardListener.stop();
