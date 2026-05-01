@@ -1,8 +1,8 @@
 import java.util.List;
 
-// Displays completed tasks and lets the user clear them all.
-// Tasks are loaded fresh from TaskManager each time the menu is entered
-// so the list is always up to date.
+// Shows everything the user has finished. The only action available is
+// clearing the whole list — there's no per-task action here by design,
+// completed tasks are just for review.
 public class CompletedTasksViewMenu extends Menu {
 
     private final TaskManager taskManager;
@@ -12,6 +12,7 @@ public class CompletedTasksViewMenu extends Menu {
         refresh();
     }
 
+    // pulls the latest completed list every time we enter or after a clear
     private void refresh() {
         List<Task> completed = taskManager.getCompletedTasks();
         setMenuItems(completed);
@@ -37,12 +38,10 @@ public class CompletedTasksViewMenu extends Menu {
         List<Task> completed = taskManager.getCompletedTasks();
 
         if (completed.isEmpty()) {
-            // only option is "Back"
-            return null;
+            return null; // only option is "Back"
         }
 
         switch (currentIndex) {
-
             case 0: // Clear All
                 taskManager.clearCompletedTasks();
                 refresh();
