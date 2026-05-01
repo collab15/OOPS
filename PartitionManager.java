@@ -1,38 +1,33 @@
 import java.io.*;
 import java.nio.file.Files;
 import java.sql.*;
-import java.util.Base64;
 
-// =========================
-// PARTITION MANAGER
-// =========================
-// Handles sync between LOCAL FILE SYSTEM ↔ SUPABASE POSTGRES
-// Includes:
-// - pendingTasks
-// - completedTasks
-// - weights
-// - task selection history
+// Syncs local file storage with a Supabase PostgreSQL database.
+// Called after every mutation so the cloud is always up to date.
+// On startup, if any of the expected local folders or files are missing,
+// it assumes this is a fresh machine and pulls everything back from the DB.
+//
+// Tables used:
+//   tasks        — serialised Task objects (pending + completed)
+//   weights      — the four AI weight values
+//   task_history — serialised list of Deltas used by LearningEngine
 public class PartitionManager {
 
-    // =========================
-    // DB CONFIG
-    // =========================
     private static final String DB_URL =
-            "jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres"
+            "jdbc:postgresql://aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres"
             + "?sslmode=require"
             + "&prepareThreshold=0"
             + "&preferQueryMode=simple";
 
-    private static final String DB_USER = "postgres.urpacclpucfjnzufumqc";
+    private static final String DB_USER     = "postgres.urpacclpucfjnzufumqc";
     private static final String DB_PASSWORD = "NoorHuda@123";
 
     private static TaskManager mtaskManager;
 
+    // not instantiated — all methods are static
     private PartitionManager() {}
 
-    // =========================
-    // MAIN SYNC
-    // =========================
+    // entry point: called by TaskManager after every write operation
     public static void sync(TaskManager taskManager) {
 
         mtaskManager = taskManager;
@@ -43,13 +38,12 @@ public class PartitionManager {
             File baseDir = new File(Settings.AppSettings.getLocalStorageDirectory());
 
             if (needsRecovery(baseDir)) {
-
+                // local storage is incomplete — pull everything down from DB
                 restoreFromDB(conn);
                 restoreWeights(conn);
                 restoreTaskSelectionHistory(conn);
-
             } else {
-
+                // local storage looks healthy — push it up to DB
                 uploadLocalState(conn);
                 syncWeights(conn);
                 syncTaskSelectionHistory(conn);
@@ -61,18 +55,18 @@ public class PartitionManager {
             e.printStackTrace();
         }
 
+        // the status badge in every menu header reflects the result
         Status.set(success ? "ONLINE" : "OFFLINE");
     }
 
-    // =========================
-    // RECOVERY CHECK
-    // =========================
+    // checks for all four expected local artifacts; if any are missing
+    // we treat the local state as untrustworthy and restore from the DB
     private static boolean needsRecovery(File baseDir) {
 
-        File pending = new File(baseDir, "pendingTasks");
+        File pending  = new File(baseDir, "pendingTasks");
         File completed = new File(baseDir, "completedTasks");
-        File weights = new File(baseDir, "weights.sys");
-        File history = new File(baseDir, "task_history.sys");
+        File weights  = new File(baseDir, "weights.sys");
+        File history  = new File(baseDir, "task_history.sys");
 
         return !baseDir.exists()
                 || !pending.exists()
@@ -81,13 +75,12 @@ public class PartitionManager {
                 || !history.exists();
     }
 
-    // =========================
-    // RESTORE FROM DB (TASKS)
-    // =========================
+    // pulls all task rows from DB and writes them as .tsk files into the
+    // correct local subfolder based on their status column
     private static void restoreFromDB(Connection conn) throws Exception {
 
-        File baseDir = new File(Settings.AppSettings.getLocalStorageDirectory());
-        File pendingDir = new File(baseDir, "pendingTasks");
+        File baseDir      = new File(Settings.AppSettings.getLocalStorageDirectory());
+        File pendingDir   = new File(baseDir, "pendingTasks");
         File completedDir = new File(baseDir, "completedTasks");
 
         pendingDir.mkdirs();
@@ -100,15 +93,12 @@ public class PartitionManager {
 
             while (rs.next()) {
 
-                String id = rs.getString("id");
+                String id     = rs.getString("id");
                 String status = rs.getString("status");
-                byte[] data = rs.getBytes("data");
+                byte[] data   = rs.getBytes("data");
 
-                File targetDir = status.equals("completed")
-                        ? completedDir
-                        : pendingDir;
-
-                File file = new File(targetDir, id + ".tsk");
+                File targetDir = status.equals("completed") ? completedDir : pendingDir;
+                File file      = new File(targetDir, id + ".tsk");
 
                 try (FileOutputStream fos = new FileOutputStream(file)) {
                     fos.write(data);
@@ -117,17 +107,15 @@ public class PartitionManager {
         }
     }
 
-    // =========================
-    // LOCAL → DB SYNC
-    // =========================
+    // pushes both local task folders to DB
     private static void uploadLocalState(Connection conn) throws Exception {
 
         String baseDir = Settings.AppSettings.getLocalStorageDirectory();
-
-        syncFolder(conn, baseDir + "/pendingTasks", "pending");
+        syncFolder(conn, baseDir + "/pendingTasks",   "pending");
         syncFolder(conn, baseDir + "/completedTasks", "completed");
     }
 
+    // reads every .tsk file in a folder and upserts it to the tasks table
     private static void syncFolder(Connection conn, String path, String status) throws IOException {
 
         File dir = new File(path);
@@ -137,9 +125,8 @@ public class PartitionManager {
         if (files == null) return;
 
         for (File file : files) {
-
             byte[] data = Files.readAllBytes(file.toPath());
-            Task task = deserializeTask(data);
+            Task task   = deserializeTask(data);
 
             if (task == null || task.getID() == null) continue;
 
@@ -147,16 +134,9 @@ public class PartitionManager {
         }
     }
 
-    // =========================
-    // UPSERT TASK
-    // =========================
-    private static void upsertTask(
-            Connection conn,
-            Task task,
-            String status,
-            byte[] data,
-            long lastModified
-    ) {
+    // INSERT ... ON CONFLICT UPDATE so we never get duplicate rows
+    private static void upsertTask(Connection conn, Task task, String status,
+                                   byte[] data, long lastModified) {
 
         String sql =
                 "INSERT INTO tasks (id, status, data, last_modified) " +
@@ -167,22 +147,16 @@ public class PartitionManager {
                 "last_modified = EXCLUDED.last_modified";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setString(1, task.getID());
             stmt.setString(2, status);
             stmt.setBytes(3, data);
             stmt.setLong(4, lastModified);
-
             stmt.executeUpdate();
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // =========================
-    // WEIGHTS SYNC → DB
-    // =========================
     private static void syncWeights(Connection conn) throws IOException {
 
         File file = new File(Settings.AppSettings.getLocalStorageDirectory(), "weights.sys");
@@ -191,28 +165,20 @@ public class PartitionManager {
         byte[] data = Files.readAllBytes(file.toPath());
 
         String sql =
-                "INSERT INTO weights (id, data, last_modified) " +
-                "VALUES (?, ?, ?) " +
-                "ON CONFLICT (id) DO UPDATE SET " +
-                "data = EXCLUDED.data, " +
+                "INSERT INTO weights (id, data, last_modified) VALUES (?, ?, ?) " +
+                "ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, " +
                 "last_modified = EXCLUDED.last_modified";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setString(1, "GLOBAL_WEIGHTS");
             stmt.setBytes(2, data);
             stmt.setLong(3, file.lastModified());
-
             stmt.executeUpdate();
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // =========================
-    // WEIGHTS RESTORE ← DB
-    // =========================
     private static void restoreWeights(Connection conn) throws SQLException, IOException {
 
         String sql = "SELECT data FROM weights WHERE id = 'GLOBAL_WEIGHTS'";
@@ -223,8 +189,7 @@ public class PartitionManager {
             if (!rs.next()) return;
 
             byte[] data = rs.getBytes("data");
-
-            File file = new File(Settings.AppSettings.getLocalStorageDirectory(), "weights.sys");
+            File file   = new File(Settings.AppSettings.getLocalStorageDirectory(), "weights.sys");
 
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 fos.write(data);
@@ -232,48 +197,34 @@ public class PartitionManager {
         }
     }
 
-    // =========================
-    // TASK HISTORY SYNC → DB
-    // =========================
     private static void syncTaskSelectionHistory(Connection conn) throws IOException {
 
         File file = new File(
-                Settings.AppSettings.getLocalStorageDirectory(),
-                "task_history.sys"
-        );
+                Settings.AppSettings.getLocalStorageDirectory(), "task_history.sys");
 
         if (!file.exists()) return;
 
         byte[] data = Files.readAllBytes(file.toPath());
 
         String sql =
-                "INSERT INTO task_history (id, data, last_modified) " +
-                "VALUES (?, ?, ?) " +
-                "ON CONFLICT (id) DO UPDATE SET " +
-                "data = EXCLUDED.data, " +
+                "INSERT INTO task_history (id, data, last_modified) VALUES (?, ?, ?) " +
+                "ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, " +
                 "last_modified = EXCLUDED.last_modified";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             stmt.setString(1, "GLOBAL_TASK_HISTORY");
             stmt.setBytes(2, data);
             stmt.setLong(3, file.lastModified());
-
             stmt.executeUpdate();
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    // =========================
-    // TASK HISTORY RESTORE ← DB
-    // =========================
     private static void restoreTaskSelectionHistory(Connection conn)
             throws SQLException, IOException {
 
-        String sql =
-                "SELECT data FROM task_history WHERE id = 'GLOBAL_TASK_HISTORY'";
+        String sql = "SELECT data FROM task_history WHERE id = 'GLOBAL_TASK_HISTORY'";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -281,11 +232,8 @@ public class PartitionManager {
             if (!rs.next()) return;
 
             byte[] data = rs.getBytes("data");
-
-            File file = new File(
-                    Settings.AppSettings.getLocalStorageDirectory(),
-                    "task_history.sys"
-            );
+            File file   = new File(
+                    Settings.AppSettings.getLocalStorageDirectory(), "task_history.sys");
 
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 fos.write(data);
@@ -293,9 +241,6 @@ public class PartitionManager {
         }
     }
 
-    // =========================
-    // CONNECTION
-    // =========================
     private static Connection getConnection() throws SQLException {
 
         try {
@@ -307,16 +252,13 @@ public class PartitionManager {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
 
-    // =========================
-    // DESERIALIZE
-    // =========================
+    // deserialises a raw byte array back into a Task object;
+    // returns null if the bytes are corrupt or from an incompatible version
     private static Task deserializeTask(byte[] data) {
 
         try (ObjectInputStream ois =
-                     new ObjectInputStream(new ByteArrayInputStream(data))) {
-
+                new ObjectInputStream(new ByteArrayInputStream(data))) {
             return (Task) ois.readObject();
-
         } catch (Exception e) {
             return null;
         }
