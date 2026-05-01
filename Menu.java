@@ -1,24 +1,28 @@
 import java.util.ArrayList;
 import java.util.List;
 
+// Base class every screen in the app inherits from.
+// Handles the shared render loop, cursor movement, and keyboard dispatch.
+// Subclasses override render() details via getItemsHeader() and
+// handleSelection() to provide their own behaviour — that's the
+// polymorphism that lets Navigator treat all menus the same way.
 public abstract class Menu {
 
-    protected List<Task> menuItems        = new ArrayList<>();
-    protected List<String> menuSelections = new ArrayList<>();
-    protected int currentIndex = 0;
+    protected List<Task>   menuItems       = new ArrayList<>();
+    protected List<String> menuSelections  = new ArrayList<>();
+    protected int  currentIndex = 0;
     protected boolean exitSignal = false;
 
-    // Subclasses override these to control what the render shows
-    // polymorphism used here bec render() method calls getItemsHeader() in the appropriate menu accordingly
-    // ex PendingTasksViewMenu CompletedTasksViewMenu 
-
+    // subclasses return the heading shown above the task list
     protected String getItemsHeader() { return "SUGGESTED TASKS"; }
 
+    // subclasses handle what happens when the user presses Enter
     abstract Menu handleSelection();
 
-    protected void setMenuSelections(String... options) { // varargs 
+    // varargs so callers can just write setMenuSelections("A", "B", "C")
+    protected void setMenuSelections(String... options) {
         for (String option : options) {
-            menuSelections.add(option); // adds it to menuSelection
+            menuSelections.add(option);
         }
     }
 
@@ -26,26 +30,28 @@ public abstract class Menu {
         this.menuItems = tasks;
     }
 
-    // called by Navigator every time a menu is visited . Resets the option back to the first option
-    // mainMenu overrides this is to also refresh the suggested 
+    // called by Navigator every time this menu comes to the top of the stack;
+    // resets the cursor so the first option is highlighted on entry
     public void reset() {
         currentIndex = 0;
         exitSignal   = false;
     }
 
+    // default display loop — subclasses with special needs (e.g. SessionMenu)
+    // override this entirely
     public Menu display() {
 
         render();
 
         while (!exitSignal) {
-            
+
             String key = KeyboardListener.listen();
 
             if      ("UP".equals(key))        moveUp();
             else if ("DOWN".equals(key))      moveDown();
             else if ("BACKSPACE".equals(key)) {
                 if (Navigator.canGoBack()) return null;
-                continue; // can't go back — silently ignore, no redraw needed
+                continue; // already at the root — ignore silently
             }
             else if ("ENTER".equals(key))     { return handleSelection(); }
 
@@ -55,7 +61,7 @@ public abstract class Menu {
         return null;
     }
 
-    // protected so subclasses that override display() can still call them
+    // protected so subclasses that override display() can still scroll the cursor
     protected void moveUp() {
         currentIndex--;
         if (currentIndex < 0) currentIndex = menuSelections.size() - 1;
@@ -66,13 +72,13 @@ public abstract class Menu {
         if (currentIndex >= menuSelections.size()) currentIndex = 0;
     }
 
+    // default render — draws the standard header, task list, and selection menu;
+    // subclasses that need extra sections (like a countdown timer) override this
     protected void render() {
-
-        String status="Status Couldn't be determined";
 
         UI.cls();
 
-        status = Status.get() + " ";
+        String status = Status.get() + " ";
 
         System.out.println();
         UI.printFullWidth("*");
@@ -82,7 +88,7 @@ public abstract class Menu {
         UI.printCenter("   ██     ██   ██      ██   ██  ██      ██ ██  ");
         UI.printCenter("   ██     ██   ██   █████   ██   ██    ██   ██");
         UI.printFullWidth("-");
-        UI.printAtMargins( Utils.getWeekDayAndDate()+" ", status );
+        UI.printAtMargins(Utils.getWeekDayAndDate() + " ", status);
         UI.printFullWidth("=");
         UI.printEmpty();
         UI.printCenter("--- " + getItemsHeader() + " ---");
