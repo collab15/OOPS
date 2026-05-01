@@ -1,8 +1,11 @@
 import java.util.List;
 
+// The home screen. Shows the AI-suggested task list and routes to every
+// major section of the app. reset() is called by Navigator every time
+// the user navigates back here, so the suggested list is always fresh.
 public class MainMenu extends Menu {
 
-    private final TaskManager taskManager;
+    private final TaskManager    taskManager;
     private final SessionManager sessionManager;
 
     public MainMenu(TaskManager taskManager, SessionManager sessionManager) {
@@ -19,12 +22,12 @@ public class MainMenu extends Menu {
         );
     }
 
-    // Re-run AI suggestion every time the menu is displayed so the list
-    // stays fresh after tasks are added, removed, or completed.
+    // re-runs the AI suggestion every visit so the list reflects any
+    // tasks added, completed, or removed since we were last here
     @Override
     public void reset() {
         super.reset();
-        menuItems = AIEngine.suggestTasks(); // refresh suggested tasks
+        menuItems = AIEngine.suggestTasks();
     }
 
     @Override
@@ -37,11 +40,11 @@ public class MainMenu extends Menu {
 
         switch (currentIndex) {
 
-            case 0:
-                if (menuItems.isEmpty()) return this; // no tasks to start
+            case 0: // Start a Task — opens SessionMenu with the suggested list
+                if (menuItems.isEmpty()) return this;
                 return new SessionMenu(menuItems, sessionManager);
 
-            case 1:
+            case 1: // Add a Task — switches to Scanner input mode temporarily
                 KeyboardListener.pause();
                 ActionHandler.addTask(taskManager);
                 KeyboardListener.resume();
