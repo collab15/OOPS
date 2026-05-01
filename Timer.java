@@ -1,13 +1,14 @@
-// Contract for all timer types in the app.
-// SessionManager depends on this interface, not on any concrete timer class,
-// so you can swap in a different timer without touching SessionManager.
+// Contract every timer in the app must follow.
+// SessionManager talks to this interface, not to any concrete class,
+// so swapping in a new timer type (e.g. a future break timer) doesn't
+// touch SessionManager at all.
 public interface Timer {
 
     void start(Task task);
-    void pause();          // freezes countdown, keeps timeRemaining intact
-    void resume();         // continues countdown from where it paused
-    void stop(Task task);  // cancels session entirely, fires onTimerInterrupted
-    int getTimeRemaining();
+    void pause();           // freezes the countdown, keeps timeRemaining intact
+    void resume();          // picks up from where it paused
+    void stop(Task task);   // cancels the session and fires onTimerInterrupted
+    int  getTimeRemaining();
     boolean isRunning();
     boolean isPaused();
 }
