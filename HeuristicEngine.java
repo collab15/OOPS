@@ -2,39 +2,40 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-// responsible for selecting the best tasks to suggest to the user based on the current weights and pending tasks
+// Scores every pending task using the current weights and returns the
+// top N as suggestions. No learning happens here — this class only
+// reads weights, it never writes them.
 public class HeuristicEngine {
 
-    private int numberOfTasksToSuggest; // how many tasks to return
-    private Weights weights; // used to calc priority score
+    private int numberOfTasksToSuggest;
+    private Weights weights;
 
     public HeuristicEngine(int numberOfTasksToSuggest, Weights weights) {
         this.numberOfTasksToSuggest = numberOfTasksToSuggest;
         this.weights = weights;
     }
 
+    // each attribute is normalised to 0–1 before multiplying by its weight
+    // so a task scored 10 on importance doesn't dwarf one scored 8 on urgency
     public double calculatePriority(Weights weights, Task task) {
 
         double importance = task.getImportance() / 10.0;
-        double urgency    = task.getUrgency() / 10.0;
-        double effort     = task.getEffort() / 10.0;
-        double length     = task.getLength() / 10.0;
+        double urgency    = task.getUrgency()    / 10.0;
+        double effort     = task.getEffort()     / 10.0;
+        double length     = task.getLength()     / 10.0;
 
         return weights.getImportance() * importance
-             + weights.getUrgency() * urgency
-             + weights.getEffort() * effort
-             + weights.getLength() * length;
+             + weights.getUrgency()    * urgency
+             + weights.getEffort()     * effort
+             + weights.getLength()     * length;
     }
 
+    // entry point: score all tasks, sort, return the top N
     public List<Task> suggestTasks(List<Task> pendingTasks) {
-
         List<PrioritizedTask> priorityList = prioritizeTasks(pendingTasks);
         return chooseHighPriorityTasks(numberOfTasksToSuggest, priorityList);
     }
 
-    // first you get pending tasks from TaskManager next you calculate a priority score
-    // for each task using the weights , then you sort the tasks by priority and return N tasks
-    // based on numberOfTasksToSuggest
     private List<PrioritizedTask> prioritizeTasks(List<Task> pendingTasks) {
 
         List<PrioritizedTask> priorityList = new ArrayList<>();
@@ -47,29 +48,25 @@ public class HeuristicEngine {
         return priorityList;
     }
 
-    private List<Task> chooseHighPriorityTasks(int numberOfTasksToSuggest,
+    private List<Task> chooseHighPriorityTasks(int limit,
                                                List<PrioritizedTask> priorityList) {
-
         List<Task> highPriorityTasks = new ArrayList<>();
         List<PrioritizedTask> sorted = sortByPriority(priorityList);
 
-        int limit = Math.min(numberOfTasksToSuggest, sorted.size());
+        int cap = Math.min(limit, sorted.size());
 
-        for (int i = 0; i < limit; i++) {
+        for (int i = 0; i < cap; i++) {
             highPriorityTasks.add(sorted.get(i).getTask());
         }
 
         return highPriorityTasks;
     }
 
+    // highest priority first
     private List<PrioritizedTask> sortByPriority(List<PrioritizedTask> priorityList) {
 
         List<PrioritizedTask> sorted = new ArrayList<>(priorityList);
-
-        sorted.sort(Comparator
-                .comparingDouble(PrioritizedTask::getPriority)
-                .reversed());
-
+        sorted.sort(Comparator.comparingDouble(PrioritizedTask::getPriority).reversed());
         return sorted;
     }
 }
