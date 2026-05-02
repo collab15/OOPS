@@ -1,7 +1,7 @@
 // All terminal drawing goes through here so the rest of the app never
 // touches System.out directly for layout. WIDTH comes from Settings so
 // you can resize the whole UI from one place.
-public abstract class UI {
+public class UI {
 
     static int WIDTH       = Settings.AppSettings.getDisplayWidth();
     static int INNER_WIDTH = WIDTH - 2; // space between the two border pipes
