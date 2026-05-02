@@ -1,7 +1,6 @@
 // Central config for the whole app. Split into three inner classes so
 // callers are explicit about what kind of setting they're touching —
 // AI tuning, user preferences, or app-level constants.
-// Abstract class means you never need to instantiate Settings itself.
 public class Settings {
 
     // Controls how the learning engine behaves.
